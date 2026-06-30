@@ -2912,7 +2912,7 @@
                              "restDaysAfter":  0,
                              "exercises":  [
                                                {
-                                                   "exerciseId":  "incline_dumbbell_press",
+                                                   "exerciseId":  "barbell_bench_press",
                                                    "sets":  4,
                                                    "repsMin":  6,
                                                    "repsMax":  10,
@@ -2971,7 +2971,7 @@
                                                    "restSeconds":  150
                                                },
                                                {
-                                                   "exerciseId":  "conventional_deadlift",
+                                                   "exerciseId":  "barbell_romanian_deadlift",
                                                    "sets":  4,
                                                    "repsMin":  6,
                                                    "repsMax":  10,
@@ -3022,7 +3022,7 @@
                                                    "restSeconds":  120
                                                },
                                                {
-                                                   "exerciseId":  "machine_chest_press",
+                                                   "exerciseId":  "dumbbell_bench_press",
                                                    "sets":  4,
                                                    "repsMin":  8,
                                                    "repsMax":  12,
@@ -3074,7 +3074,7 @@
                                                    "restSeconds":  180
                                                },
                                                {
-                                                   "exerciseId":  "walking_lunge",
+                                                   "exerciseId":  "split_squat",
                                                    "sets":  3,
                                                    "repsMin":  8,
                                                    "repsMax":  12,
@@ -3118,7 +3118,7 @@
                              "restDaysAfter":  0,
                              "exercises":  [
                                                {
-                                                   "exerciseId":  "incline_dumbbell_press",
+                                                   "exerciseId":  "barbell_bench_press",
                                                    "sets":  4,
                                                    "repsMin":  6,
                                                    "repsMax":  10,
@@ -3177,7 +3177,7 @@
                                                    "restSeconds":  150
                                                },
                                                {
-                                                   "exerciseId":  "conventional_deadlift",
+                                                   "exerciseId":  "barbell_romanian_deadlift",
                                                    "sets":  4,
                                                    "repsMin":  6,
                                                    "repsMax":  10,
@@ -3228,7 +3228,7 @@
                                                    "restSeconds":  120
                                                },
                                                {
-                                                   "exerciseId":  "machine_chest_press",
+                                                   "exerciseId":  "dumbbell_bench_press",
                                                    "sets":  4,
                                                    "repsMin":  8,
                                                    "repsMax":  12,
@@ -3280,7 +3280,7 @@
                                                    "restSeconds":  180
                                                },
                                                {
-                                                   "exerciseId":  "walking_lunge",
+                                                   "exerciseId":  "split_squat",
                                                    "sets":  3,
                                                    "repsMin":  8,
                                                    "repsMax":  12,
@@ -3324,7 +3324,7 @@
                              "restDaysAfter":  0,
                              "exercises":  [
                                                {
-                                                   "exerciseId":  "incline_dumbbell_press",
+                                                   "exerciseId":  "barbell_bench_press",
                                                    "sets":  4,
                                                    "repsMin":  6,
                                                    "repsMax":  10,
@@ -3383,7 +3383,7 @@
                                                    "restSeconds":  150
                                                },
                                                {
-                                                   "exerciseId":  "conventional_deadlift",
+                                                   "exerciseId":  "barbell_romanian_deadlift",
                                                    "sets":  4,
                                                    "repsMin":  6,
                                                    "repsMax":  10,
@@ -3434,7 +3434,7 @@
                                                    "restSeconds":  120
                                                },
                                                {
-                                                   "exerciseId":  "machine_chest_press",
+                                                   "exerciseId":  "dumbbell_bench_press",
                                                    "sets":  4,
                                                    "repsMin":  8,
                                                    "repsMax":  12,
@@ -3486,7 +3486,7 @@
                                                    "restSeconds":  180
                                                },
                                                {
-                                                   "exerciseId":  "walking_lunge",
+                                                   "exerciseId":  "split_squat",
                                                    "sets":  3,
                                                    "repsMin":  8,
                                                    "repsMax":  12,
@@ -3530,7 +3530,7 @@
                              "restDaysAfter":  0,
                              "exercises":  [
                                                {
-                                                   "exerciseId":  "incline_dumbbell_press",
+                                                   "exerciseId":  "barbell_bench_press",
                                                    "sets":  4,
                                                    "repsMin":  6,
                                                    "repsMax":  10,
@@ -3589,7 +3589,7 @@
                                                    "restSeconds":  150
                                                },
                                                {
-                                                   "exerciseId":  "conventional_deadlift",
+                                                   "exerciseId":  "barbell_romanian_deadlift",
                                                    "sets":  4,
                                                    "repsMin":  6,
                                                    "repsMax":  10,
@@ -3640,7 +3640,7 @@
                                                    "restSeconds":  120
                                                },
                                                {
-                                                   "exerciseId":  "machine_chest_press",
+                                                   "exerciseId":  "dumbbell_bench_press",
                                                    "sets":  4,
                                                    "repsMin":  8,
                                                    "repsMax":  12,
@@ -3692,7 +3692,7 @@
                                                    "restSeconds":  180
                                                },
                                                {
-                                                   "exerciseId":  "walking_lunge",
+                                                   "exerciseId":  "split_squat",
                                                    "sets":  3,
                                                    "repsMin":  8,
                                                    "repsMax":  12,

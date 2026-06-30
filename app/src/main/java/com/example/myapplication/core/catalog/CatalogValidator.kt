@@ -54,6 +54,13 @@ object CatalogValidator {
             issues += "Duplicate program match key: ${it.joinToString()}"
         }
         programs.forEach { program ->
+            if (program.id.isBlank()) issues += "Program has blank id"
+            if (program.sessionsPerWeek !in 1..7) {
+                issues += "Program '${program.id}' sessionsPerWeek must be in 1..7"
+            }
+            if (program.durationWeeks !in 1..52) {
+                issues += "Program '${program.id}' durationWeeks must be in 1..52"
+            }
             val expectedWorkoutCount = program.sessionsPerWeek * program.durationWeeks
             if (program.workouts.size != expectedWorkoutCount) issues += "Program '${program.id}' workouts.size must be $expectedWorkoutCount"
             if (program.workouts.map { it.sequence }.sorted() != (0 until program.workouts.size).toList()) {
@@ -61,6 +68,9 @@ object CatalogValidator {
             }
             program.workouts.forEach { workout ->
                 val workoutLabel = "Program '${program.id}' workout ${workout.sequence}"
+                if (workout.titleVi.isBlank()) issues += "$workoutLabel has blank titleVi"
+                if (workout.focusVi.isBlank()) issues += "$workoutLabel has blank focusVi"
+                if (workout.exercises.isEmpty()) issues += "$workoutLabel must contain exercises"
                 if (workout.week !in 1..program.durationWeeks) issues += "$workoutLabel week must be in 1..${program.durationWeeks}"
                 if (workout.estimatedMinutes !in 10..90) issues += "$workoutLabel estimatedMinutes must be in 10..90"
                 if (workout.restDaysAfter !in 0..3) issues += "$workoutLabel restDaysAfter must be in 0..3"
