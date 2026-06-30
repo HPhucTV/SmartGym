@@ -108,7 +108,7 @@ class RoomWorkoutRepository(
     }
 
     override suspend fun setExerciseChecked(sessionId: Long, orderIndex: Int, checked: Boolean) {
-        dao.setExerciseChecked(sessionId, orderIndex, checked)
+        dao.setCurrentExerciseChecked(sessionId, orderIndex, checked)
     }
 
     override suspend fun completeWorkout(
@@ -117,6 +117,11 @@ class RoomWorkoutRepository(
     ): CompleteWorkoutResult = database.withTransaction {
         val session = dao.getSession(sessionId) ?: return@withTransaction CompleteWorkoutResult.AlreadyCompleted
         if (session.completedEpochDay != null) return@withTransaction CompleteWorkoutResult.AlreadyCompleted
+        // The public result contract has no stale-state variant. Treat inactive or out-of-order
+        // requests as idempotent no-ops, matching repeated completion behavior.
+        if (dao.getCurrentSessionId() != sessionId) {
+            return@withTransaction CompleteWorkoutResult.AlreadyCompleted
+        }
         if (dao.countUnchecked(sessionId) > 0) {
             return@withTransaction CompleteWorkoutResult.BlockedByUncheckedExercises
         }
