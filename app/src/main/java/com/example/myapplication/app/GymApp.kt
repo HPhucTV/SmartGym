@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -32,9 +33,11 @@ sealed interface GymRootState {
 
 @Composable
 fun GymApp(container: AppContainer) {
-    val rootState by container.workoutRepository.observeActiveGoal()
-        .map { goal -> if (goal == null) GymRootState.NoGoal else GymRootState.ActiveGoal }
-        .collectAsStateWithLifecycle(initialValue = GymRootState.Loading)
+    val rootStateFlow = remember(container.workoutRepository) {
+        container.workoutRepository.observeActiveGoal()
+            .map { goal -> if (goal == null) GymRootState.NoGoal else GymRootState.ActiveGoal }
+    }
+    val rootState by rootStateFlow.collectAsStateWithLifecycle(initialValue = GymRootState.Loading)
     GymApp(rootState = rootState)
 }
 
