@@ -24,6 +24,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.feature.onboarding.OnboardingRoute
+import com.example.myapplication.feature.today.TodayScreen
+import com.example.myapplication.feature.today.TodayViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import java.time.LocalDate
 import kotlinx.coroutines.flow.map
 
 sealed interface GymRootState {
@@ -39,28 +45,46 @@ fun GymApp(container: AppContainer) {
             .map { goal -> if (goal == null) GymRootState.NoGoal else GymRootState.ActiveGoal }
     }
     val rootState by rootStateFlow.collectAsStateWithLifecycle(initialValue = GymRootState.Loading)
-    GymApp(rootState = rootState) {
-        OnboardingRoute(
-            programs = container.catalogRepository.programs,
-            workoutRepository = container.workoutRepository,
-        )
-    }
+    GymApp(
+        rootState = rootState,
+        noGoalContent = {
+            OnboardingRoute(
+                programs = container.catalogRepository.programs,
+                workoutRepository = container.workoutRepository,
+            )
+        },
+        todayContent = {
+            val factory = remember(container) {
+                viewModelFactory {
+                    initializer {
+                        TodayViewModel(container.workoutRepository, container.catalogRepository.exercises) {
+                            LocalDate.now().toEpochDay()
+                        }
+                    }
+                }
+            }
+            val todayViewModel: TodayViewModel = viewModel(factory = factory)
+            val state by todayViewModel.uiState.collectAsStateWithLifecycle()
+            TodayScreen(state, todayViewModel::setChecked, todayViewModel::completeWorkout, todayViewModel::retry)
+        },
+    )
 }
 
 @Composable
 fun GymApp(
     rootState: GymRootState,
     noGoalContent: @Composable () -> Unit = { DestinationScreen(AppDestination.ONBOARDING.heading) },
+    todayContent: @Composable () -> Unit = { DestinationScreen(AppDestination.TODAY.heading) },
 ) {
     when (rootState) {
         GymRootState.Loading -> LoadingScreen()
         GymRootState.NoGoal -> noGoalContent()
-        GymRootState.ActiveGoal -> ActiveGoalNavigation()
+        GymRootState.ActiveGoal -> ActiveGoalNavigation(todayContent)
     }
 }
 
 @Composable
-private fun ActiveGoalNavigation() {
+private fun ActiveGoalNavigation(todayContent: @Composable () -> Unit) {
     val navController = rememberNavController()
     val destinations = listOf(
         AppDestination.TODAY,
@@ -99,7 +123,7 @@ private fun ActiveGoalNavigation() {
         ) {
             destinations.forEach { destination ->
                 composable(destination.route) {
-                    DestinationScreen(destination.heading)
+                    if (destination == AppDestination.TODAY) todayContent() else DestinationScreen(destination.heading)
                 }
             }
         }
