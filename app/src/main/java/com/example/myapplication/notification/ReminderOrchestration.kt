@@ -1,6 +1,7 @@
 package com.example.myapplication.notification
 
 import com.example.myapplication.data.Settings
+import kotlinx.coroutines.CancellationException
 
 internal suspend fun runWorkoutReminder(
     loadSettings: suspend () -> Settings,
@@ -8,9 +9,15 @@ internal suspend fun runWorkoutReminder(
     notify: () -> Unit,
     log: (Throwable) -> Unit,
 ) {
-    val settings = try { loadSettings() } catch (error: Throwable) { log(error); null }
-    if (settings?.reminderEnabled == true) try { schedule(settings.reminderHour, settings.reminderMinute) } catch (error: Throwable) { log(error) }
-    try { notify() } catch (error: Throwable) { log(error) }
+    val settings = try { loadSettings() }
+    catch (cancelled: CancellationException) { throw cancelled }
+    catch (error: Throwable) { log(error); null }
+    if (settings?.reminderEnabled == true) try { schedule(settings.reminderHour, settings.reminderMinute) }
+    catch (cancelled: CancellationException) { throw cancelled }
+    catch (error: Throwable) { log(error) }
+    try { notify() }
+    catch (cancelled: CancellationException) { throw cancelled }
+    catch (error: Throwable) { log(error) }
 }
 
 internal suspend fun runBootReschedule(
@@ -21,5 +28,6 @@ internal suspend fun runBootReschedule(
     try {
         val settings = loadSettings()
         if (settings.reminderEnabled) schedule(settings.reminderHour, settings.reminderMinute)
-    } catch (error: Throwable) { log(error) }
+    } catch (cancelled: CancellationException) { throw cancelled }
+    catch (error: Throwable) { log(error) }
 }

@@ -15,6 +15,9 @@ import com.example.myapplication.data.DataStoreSettingsRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 
+internal fun shouldPostNotification(apiLevel: Int, permissionGranted: Boolean) = apiLevel < 33 || permissionGranted
+internal fun notificationContentIntentFlags() = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+
 class WorkoutReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         val pending = goAsync()
@@ -32,13 +35,14 @@ class WorkoutReminderReceiver : BroadcastReceiver() {
     }
 
     private fun postNotification(app: Context) {
-        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        val permissionGranted = ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (!shouldPostNotification(Build.VERSION.SDK_INT, permissionGranted)) return
         val manager = app.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(
             NotificationChannel(CHANNEL, app.getString(R.string.reminder_channel), NotificationManager.IMPORTANCE_DEFAULT))
         val contentIntent = PendingIntent.getActivity(
             app, 0, Intent(app, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            notificationContentIntentFlags(),
         )
         NotificationManagerCompat.from(app).notify(1001, NotificationCompat.Builder(app, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_foreground)

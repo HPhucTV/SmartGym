@@ -2,6 +2,7 @@ package com.example.myapplication.notification
 
 import com.example.myapplication.data.Settings
 import java.time.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
@@ -37,5 +38,53 @@ class ReminderRecoveryTest {
         calls.clear()
         runBootReschedule({ Settings(reminderEnabled = true) }, { _, _ -> error("alarm") }, { calls += "log" })
         assertEquals(listOf("log"), calls)
+    }
+    @Test fun `cancellation from reminder callbacks is rethrown and never logged`() = runTest {
+        suspend fun assertCancelled(block: suspend (MutableList<String>) -> Unit) {
+            val calls = mutableListOf<String>()
+            try { block(calls); fail("expected cancellation") }
+            catch (_: CancellationException) { assertFalse(calls.contains("log")) }
+        }
+        assertCancelled { calls -> runWorkoutReminder({ throw CancellationException("settings") }, { _, _ -> }, {}, { calls += "log" }) }
+        assertCancelled { calls -> runWorkoutReminder({ Settings(reminderEnabled = true) }, { _, _ -> throw CancellationException("schedule") }, {}, { calls += "log" }) }
+        assertCancelled { calls -> runWorkoutReminder({ Settings() }, { _, _ -> }, { throw CancellationException("notify") }, { calls += "log" }) }
+        assertCancelled { calls -> runBootReschedule({ throw CancellationException("boot") }, { _, _ -> }, { calls += "log" }) }
+    }
+
+    @Test fun `DST gap resolves exactly and overlap chooses next valid instant`() {
+        val zone = ZoneId.of("America/New_York")
+        val gapNow = ZonedDateTime.of(2026, 3, 8, 1, 0, 0, 0, zone)
+        val gap = nextReminderOccurrence(gapNow, 2, 30)
+        assertEquals(LocalDateTime.of(2026, 3, 8, 3, 30), gap.toLocalDateTime())
+        assertEquals(ZoneOffset.ofHours(-4), gap.offset)
+
+        val beforeOverlap = ZonedDateTime.ofLocal(LocalDateTime.of(2026, 11, 1, 0, 30), zone, ZoneOffset.ofHours(-4))
+        val first = nextReminderOccurrence(beforeOverlap, 1, 30)
+        assertEquals(ZoneOffset.ofHours(-4), first.offset)
+        val betweenOccurrences = ZonedDateTime.ofLocal(LocalDateTime.of(2026, 11, 1, 1, 45), zone, ZoneOffset.ofHours(-4))
+        val second = nextReminderOccurrence(betweenOccurrences, 1, 30)
+        assertEquals(LocalDateTime.of(2026, 11, 1, 1, 30), second.toLocalDateTime())
+        assertEquals(ZoneOffset.ofHours(-5), second.offset)
+        assertTrue(second.toInstant().isAfter(betweenOccurrences.toInstant()))
+    }
+
+    @Test fun `notification permission matrix and pending intent flags are explicit`() {
+        assertTrue(shouldPostNotification(apiLevel = 32, permissionGranted = false))
+        assertTrue(shouldPostNotification(apiLevel = 33, permissionGranted = true))
+        assertFalse(shouldPostNotification(apiLevel = 33, permissionGranted = false))
+        val flags = notificationContentIntentFlags()
+        assertTrue(flags and android.app.PendingIntent.FLAG_UPDATE_CURRENT != 0)
+        assertTrue(flags and android.app.PendingIntent.FLAG_IMMUTABLE != 0)
+    }
+
+    @Test fun `permission denial skips post but orchestration still schedules`() = runTest {
+        val calls = mutableListOf<String>()
+        runWorkoutReminder(
+            loadSettings = { Settings(reminderEnabled = true) },
+            schedule = { _, _ -> calls += "schedule" },
+            notify = { if (shouldPostNotification(33, false)) calls += "notify" },
+            log = { calls += "log" },
+        )
+        assertEquals(listOf("schedule"), calls)
     }
 }

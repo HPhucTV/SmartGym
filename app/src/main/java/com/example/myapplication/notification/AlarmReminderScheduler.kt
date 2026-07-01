@@ -8,8 +8,14 @@ internal fun nextReminderOccurrence(now: ZonedDateTime, hour: Int, minute: Int):
     require(hour in 0..23 && minute in 0..59)
     var date = now.toLocalDate()
     while (true) {
-        val candidate = date.atTime(hour, minute).atZone(now.zone)
-        if (candidate.isAfter(now)) return candidate
+        val local = date.atTime(hour, minute)
+        val offsets = now.zone.rules.getValidOffsets(local)
+        val candidates = if (offsets.isEmpty()) {
+            listOf(local.atZone(now.zone))
+        } else {
+            offsets.map { offset -> ZonedDateTime.ofLocal(local, now.zone, offset) }
+        }
+        candidates.sortedBy { it.toInstant() }.firstOrNull { it.toInstant().isAfter(now.toInstant()) }?.let { return it }
         date = date.plusDays(1)
     }
 }
