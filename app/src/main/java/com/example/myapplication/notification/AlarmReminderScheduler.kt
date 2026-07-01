@@ -4,14 +4,21 @@ import android.app.*
 import android.content.*
 import java.time.*
 
+internal fun nextReminderOccurrence(now: ZonedDateTime, hour: Int, minute: Int): ZonedDateTime {
+    require(hour in 0..23 && minute in 0..59)
+    var date = now.toLocalDate()
+    while (true) {
+        val candidate = date.atTime(hour, minute).atZone(now.zone)
+        if (candidate.isAfter(now)) return candidate
+        date = date.plusDays(1)
+    }
+}
+
 class AlarmReminderScheduler(context: Context) : ReminderScheduler {
     private val app = context.applicationContext
     private val alarm = app.getSystemService(AlarmManager::class.java)
     override fun schedule(hour: Int, minute: Int) {
-        require(hour in 0..23 && minute in 0..59)
-        val now = ZonedDateTime.now()
-        var next = now.toLocalDate().atTime(hour, minute).atZone(now.zone)
-        if (!next.isAfter(now)) next = next.plusDays(1)
+        val next = nextReminderOccurrence(ZonedDateTime.now(), hour, minute)
         alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.toInstant().toEpochMilli(), intent())
     }
     override fun cancel() = alarm.cancel(intent())

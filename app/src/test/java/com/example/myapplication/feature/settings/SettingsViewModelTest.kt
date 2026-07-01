@@ -101,6 +101,48 @@ class SettingsViewModelTest {
         assertNull((cancelledVm.uiState.value as SettingsUiState.Content).message)
     }
 
+
+    @Test fun `scheduler failures compensate persisted reminder state and alarm`() = runTest(dispatcher) {
+        suspend fun content(vm: SettingsViewModel) = (vm.uiState.first { it is SettingsUiState.Content } as SettingsUiState.Content)
+
+        val enableSettings = FakeSettingsRepository()
+        val enableScheduler = FakeScheduler(failOnceOn = "schedule:20:0")
+        val enableVm = SettingsViewModel(FakeWorkoutRepository(), enableSettings, enableScheduler); runCurrent()
+        enableVm.setReminderEnabled(true); advanceUntilIdle()
+        assertFalse(enableSettings.value.value.reminderEnabled)
+        assertEquals(listOf("schedule:20:0", "cancel"), enableScheduler.calls)
+        assertNotNull(content(enableVm).message)
+
+        val disableSettings = FakeSettingsRepository(Settings(reminderEnabled = true, reminderHour = 19, reminderMinute = 30))
+        val disableScheduler = FakeScheduler(failOnceOn = "cancel")
+        val disableVm = SettingsViewModel(FakeWorkoutRepository(), disableSettings, disableScheduler); runCurrent()
+        disableVm.setReminderEnabled(false); advanceUntilIdle()
+        assertTrue(disableSettings.value.value.reminderEnabled)
+        assertEquals(listOf("cancel", "schedule:19:30"), disableScheduler.calls)
+        assertNotNull(content(disableVm).message)
+
+        val timeSettings = FakeSettingsRepository(Settings(reminderEnabled = true, reminderHour = 19, reminderMinute = 30))
+        val timeScheduler = FakeScheduler(failOnceOn = "schedule:6:45")
+        val timeVm = SettingsViewModel(FakeWorkoutRepository(), timeSettings, timeScheduler); runCurrent()
+        timeVm.setReminderTime(6, 45); timeVm.setReminderTime(8, 0); advanceUntilIdle()
+        assertEquals(19, timeSettings.value.value.reminderHour)
+        assertEquals(30, timeSettings.value.value.reminderMinute)
+        assertEquals(listOf("schedule:6:45", "schedule:19:30"), timeScheduler.calls)
+        assertNotNull(content(timeVm).message)
+    }
+
+    @Test fun `replacement cancellation after acknowledgement resets mode without completing archive`() = runTest(dispatcher) {
+        val modes = mutableListOf<Boolean>()
+        val repo = FakeWorkoutRepository(archiveFailure = CancellationException("stop"))
+        val vm = SettingsViewModel(repo, FakeSettingsRepository(), FakeScheduler()); runCurrent()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            consumeSettingsEvents(vm.events, {}, modes::add)
+        }
+        vm.requestReplaceGoal(); vm.confirmGoalAction(); advanceUntilIdle()
+        assertEquals(listOf(true, false), modes)
+        assertEquals(0, repo.archives)
+        assertNotNull(repo.active.value)
+    }
     private fun goal() = ActiveGoal(1, GoalConfig(FitnessGoal.GENERAL_FITNESS, ExperienceLevel.BEGINNER,
         EquipmentProfile.BODYWEIGHT_ONLY, 3, 4, RestDayMode.FULL_REST), 12)
 
@@ -129,8 +171,9 @@ private class FakeSettingsRepository(initial: Settings = Settings(), private val
     override suspend fun setRestDayMode(mode: RestDayMode?) { fail(); value.value = value.value.copy(restDayMode = mode) }
 }
 
-private class FakeScheduler : ReminderScheduler {
+private class FakeScheduler(private var failOnceOn: String? = null) : ReminderScheduler {
     val calls = mutableListOf<String>()
-    override fun schedule(hour: Int, minute: Int) { calls += "schedule:$hour:$minute" }
-    override fun cancel() { calls += "cancel" }
+    private fun record(call: String) { calls += call; if (failOnceOn == call) { failOnceOn = null; error("scheduler failure") } }
+    override fun schedule(hour: Int, minute: Int) = record("schedule:$hour:$minute")
+    override fun cancel() = record("cancel")
 }

@@ -6,9 +6,12 @@ import com.example.myapplication.core.model.*
 import com.example.myapplication.data.*
 import com.example.myapplication.notification.ReminderScheduler
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 class SettingsViewModel(
     private val workoutRepository: WorkoutRepository,
@@ -35,27 +38,55 @@ class SettingsViewModel(
     }
 
     fun setRestDayMode(mode: RestDayMode) = perform { settingsRepository.setRestDayMode(mode) }
-    fun setReminderTime(hour: Int, minute: Int) = perform {
-        settingsRepository.setReminderTime(hour, minute)
-        val current = settingsRepository.settings.first()
-        if (current.reminderEnabled) scheduler.schedule(hour, minute)
-    }
-    fun setReminderEnabled(enabled: Boolean) {
-        if (saving.value) return
-        saving.value = true; message.value = null
+
+    fun setReminderTime(hour: Int, minute: Int) {
+        if (!startSaving()) return
         viewModelScope.launch {
+            var previous: Settings? = null
             try {
-                val current = settingsRepository.settings.first()
-                settingsRepository.setReminderEnabled(enabled)
-                if (enabled) {
-                    scheduler.schedule(current.reminderHour, current.reminderMinute)
-                    _events.send(SettingsEvent.RequestNotificationPermission)
-                } else scheduler.cancel()
-            } catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { message.value = "Không thể lưu cài đặt. Vui lòng thử lại." }
-            finally { saving.value = false }
+                previous = settingsRepository.settings.first()
+                settingsRepository.setReminderTime(hour, minute)
+                if (previous.reminderEnabled) scheduler.schedule(hour, minute)
+            } catch (cancelled: CancellationException) {
+                previous?.let { restoreReminder(it) }; throw cancelled
+            } catch (_: Exception) {
+                previous?.let { restoreReminder(it) }; message.value = SAVE_ERROR
+            } finally { saving.value = false }
         }
     }
+
+    fun setReminderEnabled(enabled: Boolean) {
+        if (!startSaving()) return
+        viewModelScope.launch {
+            var previous: Settings? = null
+            try {
+                previous = settingsRepository.settings.first()
+                settingsRepository.setReminderEnabled(enabled)
+                if (enabled) scheduler.schedule(previous.reminderHour, previous.reminderMinute) else scheduler.cancel()
+                if (enabled) _events.send(SettingsEvent.RequestNotificationPermission)
+            } catch (cancelled: CancellationException) {
+                previous?.let { restoreReminder(it) }; throw cancelled
+            } catch (_: Exception) {
+                previous?.let { restoreReminder(it) }; message.value = SAVE_ERROR
+            } finally { saving.value = false }
+        }
+    }
+
+    private fun startSaving(): Boolean {
+        if (saving.value) return false
+        saving.value = true
+        message.value = null
+        return true
+    }
+
+    private suspend fun restoreReminder(previous: Settings) = withContext(NonCancellable) {
+        runCatching { settingsRepository.setReminderTime(previous.reminderHour, previous.reminderMinute) }
+        runCatching { settingsRepository.setReminderEnabled(previous.reminderEnabled) }
+        runCatching {
+            if (previous.reminderEnabled) scheduler.schedule(previous.reminderHour, previous.reminderMinute) else scheduler.cancel()
+        }
+    }
+
     fun requestReplaceGoal() { if (!saving.value) confirmation.value = PendingConfirmation.REPLACE }
     fun requestDeleteGoal() { if (!saving.value) confirmation.value = PendingConfirmation.DELETE }
     fun cancelConfirmation() { if (!saving.value) confirmation.value = PendingConfirmation.NONE }
@@ -71,27 +102,34 @@ class SettingsViewModel(
                 modeHoisted = replacing
                 workoutRepository.archiveActiveGoal()
             } catch (cancelled: CancellationException) {
-                if (modeHoisted) navigateAndAwait(false)
+                if (modeHoisted) resetReplacementMode()
                 throw cancelled
             } catch (_: Exception) {
-                if (modeHoisted) navigateAndAwait(false)
+                if (modeHoisted) resetReplacementMode()
                 message.value = "Không thể cập nhật mục tiêu. Vui lòng thử lại."
             } finally { saving.value = false }
         }
     }
+
+    private suspend fun resetReplacementMode() = withContext(NonCancellable) {
+        withTimeoutOrNull(1_000) { navigateAndAwait(false) }
+    }
+
     private suspend fun navigateAndAwait(replacing: Boolean) {
         val event = SettingsEvent.GoToOnboarding(replacing)
         _events.send(event)
         event.awaitAcknowledgement()
     }
+
     private fun perform(block: suspend () -> Unit) {
-        if (saving.value) return
-        saving.value = true; message.value = null
+        if (!startSaving()) return
         viewModelScope.launch {
             try { block() }
             catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { message.value = "Không thể lưu cài đặt. Vui lòng thử lại." }
+            catch (_: Exception) { message.value = SAVE_ERROR }
             finally { saving.value = false }
         }
     }
+
+    private companion object { const val SAVE_ERROR = "Không thể lưu cài đặt. Vui lòng thử lại." }
 }
