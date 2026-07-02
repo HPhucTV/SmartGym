@@ -4,7 +4,7 @@
 
 Build a single-user Android workout companion that works fully offline. The user creates one active goal, receives a preset daily workout, ticks each exercise, completes the session, and reviews progress.
 
-The first release must not add accounts, a backend, cloud sync, AI-generated workouts, body measurements, nutrition tracking, or weight/repetition logging.
+The expanded release may add a local personal profile and body-weight history, nutrition tracking, hybrid personalization, and optional consent-gated AI explanations. Core workout planning and local rules must continue working fully offline. Do not add accounts, cloud sync, random or AI-generated workouts, medical treatment, or exercise weight/repetition logging.
 
 ## Current stack
 
