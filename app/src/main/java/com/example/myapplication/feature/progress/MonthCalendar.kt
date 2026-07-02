@@ -20,7 +20,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 internal val CompletedDayBackgroundColor = SuccessGreen
-internal val CompletedDayContentColor = Navy
+internal val CompletedDayContentColor = Color(0xFF0F172A) // High contrast dark color on green background
 
 @Composable
 fun MonthCalendar(
@@ -32,6 +32,9 @@ fun MonthCalendar(
     onNextMonth: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -41,6 +44,10 @@ fun MonthCalendar(
             FilledTonalButton(
                 onClick = onPreviousMonth,
                 enabled = canNavigatePrevious,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = colors.surfaceVariant,
+                    contentColor = customColors.primaryText
+                ),
                 modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                     .semantics { contentDescription = "Tháng trước" },
                 contentPadding = PaddingValues(0.dp),
@@ -49,11 +56,15 @@ fun MonthCalendar(
                 "Tháng ${selectedMonth.monthValue}, ${selectedMonth.year}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Navy,
+                color = customColors.primaryText,
             )
             FilledTonalButton(
                 onClick = onNextMonth,
                 enabled = canNavigateNext,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = colors.surfaceVariant,
+                    contentColor = customColors.primaryText
+                ),
                 modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                     .semantics { contentDescription = "Tháng sau" },
                 contentPadding = PaddingValues(0.dp),
@@ -63,7 +74,7 @@ fun MonthCalendar(
         Row(Modifier.fillMaxWidth()) {
             listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN").forEach { label ->
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Text(label, color = MutedText, style = MaterialTheme.typography.labelMedium)
+                    Text(label, color = customColors.mutedText, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -90,6 +101,9 @@ fun MonthCalendar(
 
 @Composable
 private fun CalendarDay(date: LocalDate, completed: Boolean, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
     val formatted = date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
     val description = if (completed) "Đã hoàn thành ngày $formatted" else "Ngày $formatted"
     Box(
@@ -101,7 +115,11 @@ private fun CalendarDay(date: LocalDate, completed: Boolean, modifier: Modifier 
                 .background(if (completed) CompletedDayBackgroundColor else Color.Transparent),
             contentAlignment = Alignment.Center,
         ) {
-            Text(date.dayOfMonth.toString(), color = if (completed) CompletedDayContentColor else Navy, fontWeight = FontWeight.SemiBold)
+            Text(
+                date.dayOfMonth.toString(),
+                color = if (completed) CompletedDayContentColor else customColors.primaryText,
+                fontWeight = FontWeight.SemiBold
+            )
             if (completed) {
                 Text("✓", color = CompletedDayContentColor, style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.align(Alignment.BottomEnd).padding(2.dp))

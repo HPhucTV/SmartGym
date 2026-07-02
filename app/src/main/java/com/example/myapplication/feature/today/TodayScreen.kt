@@ -1,17 +1,30 @@
 package com.example.myapplication.feature.today
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -22,61 +35,470 @@ fun TodayScreen(
     onCheckedChange: (Int, Boolean) -> Unit,
     onComplete: () -> Unit,
     onRetry: () -> Unit,
+    onNavigateToCatalog: () -> Unit = {},
+    onNavigateToNutrition: () -> Unit = {},
+    onRefreshCoachTip: () -> Unit = {},
 ) {
-    when (state) {
-        TodayUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = EnergyOrange, modifier = Modifier.semantics { contentDescription = "Đang tải bài tập" }) }
-        TodayUiState.GoalComplete -> MessageScreen("Hoàn thành mục tiêu", "Bạn đã hoàn thành tất cả buổi tập trong chương trình. Tuyệt vời!")
-        is TodayUiState.Recovery -> if (state.kind == RecoveryKind.FULL_REST) {
-            MessageScreen("Nghỉ ngơi hoàn toàn", "Hôm nay hãy nghỉ ngơi. Buổi tập tiếp theo vào ngày ${formatEpochDay(state.nextDueEpochDay)}.", modifier = Modifier.testTag("today-recovery"))
-        } else {
-            MessageScreen("Phục hồi nhẹ", "Bạn có thể đi bộ hoặc vận động nhẹ. Buổi tập tiếp theo vào ngày ${formatEpochDay(state.nextDueEpochDay)}.", modifier = Modifier.testTag("today-recovery"))
+    val colors = MaterialTheme.colorScheme
+
+    Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
+        when (state) {
+            TodayUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = EnergyOrange, modifier = Modifier.semantics { contentDescription = "Đang tải bài tập" })
+            }
+            TodayUiState.GoalComplete -> GoalCompleteScreen()
+            is TodayUiState.Recovery -> RecoveryScreen(state, onRefreshCoachTip)
+            is TodayUiState.Error -> ErrorScreen(state, onRetry)
+            is TodayUiState.Workout -> WorkoutContent(
+                state = state,
+                onCheckedChange = onCheckedChange,
+                onComplete = onComplete,
+                onNavigateToCatalog = onNavigateToCatalog,
+                onNavigateToNutrition = onNavigateToNutrition,
+                onRefreshCoachTip = onRefreshCoachTip
+            )
         }
-        is TodayUiState.Error -> MessageScreen("Đã có lỗi", state.message, if (state.canRetry) "Thử lại" else null, onRetry)
-        is TodayUiState.Workout -> WorkoutContent(state, onCheckedChange, onComplete)
     }
 }
 
+// ── Hero Header Card ──────────────────────────────────────────────
+
 @Composable
-private fun WorkoutContent(state: TodayUiState.Workout, onCheckedChange: (Int, Boolean) -> Unit, onComplete: () -> Unit) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().testTag("today-workout"),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+private fun TodayHeaderCard(
+    state: TodayUiState.Workout,
+    onNavigateToCatalog: () -> Unit,
+    onNavigateToNutrition: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    val greeting = when {
+        state.greetingHour < 12 -> "Chào buổi sáng! 🌅"
+        state.greetingHour < 18 -> "Chào buổi chiều! ☀️"
+        else -> "Chào buổi tối! 🌙"
+    }
+    val progress = if (state.total > 0) state.checkedCount.toFloat() / state.total else 0f
+
+    Surface(
+        color = colors.surfaceVariant,
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        item {
-            Text("Bài tập hôm nay", style = MaterialTheme.typography.headlineMedium, color = Navy)
-            Spacer(Modifier.height(8.dp))
-            Text(state.titleVi, style = MaterialTheme.typography.titleLarge, color = Navy)
-            Text("${state.focusVi} · ${state.estimatedMinutes} phút", color = MutedText)
-            Spacer(Modifier.height(8.dp))
-            Text("${state.checkedCount}/${state.total} bài đã xong", color = SuccessGreen, style = MaterialTheme.typography.titleMedium)
-        }
-        items(state.rows, key = { "${state.sessionId}:${it.orderIndex}:${it.exerciseId}" }) { row ->
-            ExerciseCard(state.sessionId, row, enabled = !state.isCompleting && row.orderIndex !in state.pendingOrderIndices) { checked -> onCheckedChange(row.orderIndex, checked) }
-        }
-        state.interactionError?.let { message ->
-            item { Text(message, color = MaterialTheme.colorScheme.error) }
-        }
-        item {
-            Button(
-                onClick = onComplete,
-                enabled = state.canComplete && !state.isCompleting,
-                colors = ButtonDefaults.buttonColors(containerColor = EnergyOrange, contentColor = Color.White),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("today-complete"),
-            ) { Text(if (state.isCompleting) "Đang hoàn thành…" else "Hoàn thành buổi tập") }
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(greeting, style = MaterialTheme.typography.labelLarge, color = EnergyOrange)
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "📚 Tra cứu",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = EnergyOrange,
+                        modifier = Modifier
+                            .clickable { onNavigateToCatalog() }
+                            .padding(vertical = 4.dp)
+                    )
+                    Text(
+                        "🥗 Dinh dưỡng",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = SuccessGreen,
+                        modifier = Modifier
+                            .clickable { onNavigateToNutrition() }
+                            .padding(vertical = 4.dp)
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(state.titleVi, style = MaterialTheme.typography.titleLarge, color = customColors.primaryText)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "${state.focusVi} · ${state.estimatedMinutes} phút",
+                    color = customColors.mutedText,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "${state.checkedCount}/${state.total} bài đã xong",
+                    color = SuccessGreen,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            // Circular progress ring
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(80.dp)) {
+                CircularProgressIndicator(
+                    progress = { 1f },
+                    modifier = Modifier.size(80.dp),
+                    color = colors.outline,
+                    strokeWidth = 8.dp,
+                    strokeCap = StrokeCap.Round,
+                )
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(80.dp),
+                    color = if (progress >= 1f) SuccessGreen else EnergyOrange,
+                    strokeWidth = 8.dp,
+                    strokeCap = StrokeCap.Round,
+                )
+                Text(
+                    "${(progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = customColors.primaryText,
+                )
+            }
         }
     }
 }
 
+// ── Workout Content ───────────────────────────────────────────────
+
 @Composable
-private fun MessageScreen(title: String, message: String, action: String? = null, onAction: () -> Unit = {}, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(title, style = MaterialTheme.typography.headlineMedium, color = Navy)
-        Spacer(Modifier.height(12.dp)); Text(message, color = MutedText)
-        if (action != null) { Spacer(Modifier.height(20.dp)); Button(onClick = onAction, colors = ButtonDefaults.buttonColors(containerColor = EnergyOrange)) { Text(action) } }
+private fun WorkoutContent(
+    state: TodayUiState.Workout,
+    onCheckedChange: (Int, Boolean) -> Unit,
+    onComplete: () -> Unit,
+    onNavigateToCatalog: () -> Unit,
+    onNavigateToNutrition: () -> Unit,
+    onRefreshCoachTip: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    var timerInitialSeconds by remember { mutableIntStateOf(0) }
+    var timerVisible by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().testTag("today-workout"),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            // Header card
+            item(key = "header") {
+                TodayHeaderCard(state, onNavigateToCatalog, onNavigateToNutrition)
+            }
+
+            // AI Coach Tip card
+            item(key = "coach-tip") {
+                AICoachTipCard(
+                    tip = state.coachTip,
+                    isRefreshing = state.isRefreshingCoach,
+                    onRefresh = onRefreshCoachTip
+                )
+            }
+
+            // Exercise list
+            items(state.rows, key = { "${state.sessionId}:${it.orderIndex}:${it.exerciseId}" }) { row ->
+                ExerciseCard(
+                    state.sessionId,
+                    row,
+                    enabled = !state.isCompleting && row.orderIndex !in state.pendingOrderIndices,
+                ) { checked ->
+                    onCheckedChange(row.orderIndex, checked)
+                    if (checked && row.restSeconds > 0) {
+                        timerInitialSeconds = row.restSeconds
+                        timerVisible = true
+                    }
+                }
+            }
+
+            // Interaction error
+            state.interactionError?.let { message ->
+                item(key = "error") { Text(message, color = colors.error) }
+            }
+
+            // Completion section
+            item(key = "complete") {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    // Status hint
+                    val remaining = state.total - state.checkedCount
+                    Text(
+                        when {
+                            state.isCompleting -> "Đang lưu kết quả..."
+                            remaining == 0 -> "Sẵn sàng hoàn thành! ✓"
+                            remaining == 1 -> "Còn 1 bài nữa"
+                            else -> "Còn $remaining bài nữa"
+                        },
+                        color = if (remaining == 0) SuccessGreen else customColors.mutedText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (remaining == 0) FontWeight.Bold else FontWeight.Normal,
+                    )
+                    Spacer(Modifier.height(10.dp))
+
+                    Button(
+                        onClick = onComplete,
+                        enabled = state.canComplete && !state.isCompleting,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EnergyOrange,
+                            contentColor = Color.White,
+                            disabledContainerColor = colors.outline,
+                            disabledContentColor = customColors.mutedText,
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 56.dp)
+                            .testTag("today-complete"),
+                    ) {
+                        Text(
+                            if (state.isCompleting) "Đang hoàn thành…" else "Hoàn thành buổi tập ✓",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+        }
+
+        // Floating Rest Timer at the bottom
+        if (timerVisible && timerInitialSeconds > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                RestTimerSection(
+                    initialSeconds = timerInitialSeconds,
+                    onFinished = { timerVisible = false },
+                    onClose = { timerVisible = false }
+                )
+            }
+        }
     }
 }
+
+// ── Recovery Screen ───────────────────────────────────────────────
+
+@Composable
+private fun RecoveryScreen(
+    state: TodayUiState.Recovery,
+    onRefreshCoachTip: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp)
+            .verticalScroll(rememberScrollState())
+            .testTag("today-recovery"),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        val emoji = if (state.kind == RecoveryKind.FULL_REST) "🧘" else "🚶"
+        Text(emoji, fontSize = 64.sp)
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            if (state.kind == RecoveryKind.FULL_REST) "Nghỉ ngơi hoàn toàn" else "Phục hồi nhẹ",
+            style = MaterialTheme.typography.headlineMedium,
+            color = customColors.primaryText,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            if (state.kind == RecoveryKind.FULL_REST)
+                "Hôm nay hãy nghỉ ngơi để cơ thể phục hồi."
+            else
+                "Bạn có thể đi bộ hoặc vận động nhẹ nhàng.",
+            color = customColors.mutedText,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Spacer(Modifier.height(24.dp))
+
+        // Next workout info card
+        Surface(
+            color = customColors.recoveryBlueBg,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("📅", fontSize = 28.sp)
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text("Buổi tập tiếp theo", color = customColors.primaryText, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        formatEpochDay(state.nextDueEpochDay),
+                        color = customColors.recoveryBlue,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        AICoachTipCard(
+            tip = state.coachTip,
+            isRefreshing = state.isRefreshingCoach,
+            onRefresh = onRefreshCoachTip
+        )
+    }
+}
+
+// ── Goal Complete Screen ──────────────────────────────────────────
+
+@Composable
+private fun GoalCompleteScreen() {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("🏆", fontSize = 72.sp)
+        Spacer(Modifier.height(20.dp))
+        Text(
+            "Hoàn thành mục tiêu!",
+            style = MaterialTheme.typography.headlineMedium,
+            color = customColors.primaryText,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Bạn đã hoàn thành tất cả buổi tập trong chương trình. Tuyệt vời! 🎉",
+            color = customColors.mutedText,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Spacer(Modifier.height(24.dp))
+        Surface(
+            color = customColors.greenLight,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    "Hãy vào Cài đặt để tạo mục tiêu mới!",
+                    color = customColors.primaryText,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+// ── Error Screen ──────────────────────────────────────────────────
+
+@Composable
+private fun ErrorScreen(state: TodayUiState.Error, onRetry: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("⚠️", fontSize = 56.sp)
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Đã có lỗi",
+            style = MaterialTheme.typography.headlineMedium,
+            color = customColors.primaryText,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(state.message, color = customColors.mutedText, textAlign = TextAlign.Center)
+        if (state.canRetry) {
+            Spacer(Modifier.height(20.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = EnergyOrange),
+                shape = RoundedCornerShape(12.dp),
+            ) { Text("Thử lại") }
+        }
+    }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
 
 private val todayDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 private fun formatEpochDay(epochDay: Long): String = LocalDate.ofEpochDay(epochDay).format(todayDateFormatter)
+
+@Composable
+private fun AICoachTipCard(
+    tip: String?,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit
+) {
+    if (tip.isNullOrEmpty()) return
+
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    Surface(
+        color = colors.surfaceVariant,
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, colors.outline),
+        modifier = Modifier.fillMaxWidth().animateContentSize()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🤖", fontSize = 24.sp, modifier = Modifier.padding(end = 8.dp))
+                    Text(
+                        "Trợ lý AI Coach",
+                        fontWeight = FontWeight.Bold,
+                        color = customColors.primaryText,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                if (isRefreshing) {
+                    CircularProgressIndicator(
+                        color = EnergyOrange,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(16.dp)
+                    )
+                } else {
+                    Text(
+                        "Cập nhật 🔄",
+                        color = EnergyOrange,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier
+                            .clickable { onRefresh() }
+                            .padding(4.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = tip,
+                style = MaterialTheme.typography.bodyMedium,
+                color = customColors.primaryText,
+                lineHeight = 20.sp
+            )
+        }
+    }
+}

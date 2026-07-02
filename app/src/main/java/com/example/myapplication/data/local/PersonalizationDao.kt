@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Upsert
+import com.example.myapplication.core.adaptation.AdaptationKind
+import com.example.myapplication.core.adaptation.AdaptationStatus
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -52,6 +54,15 @@ interface PersonalizationDao {
 
     @Insert
     suspend fun insertDecision(decision: AdaptationDecisionEntity): Long
+
+    @Query("UPDATE adaptation_decisions SET status = :status, resolvedAtEpochMillis = :resolvedAt WHERE id = :id")
+    suspend fun updateDecisionStatus(id: Long, status: AdaptationStatus, resolvedAt: Long)
+
+    @Query("SELECT * FROM adaptation_decisions WHERE id = :id LIMIT 1")
+    suspend fun decisionByIdNow(id: Long): AdaptationDecisionEntity?
+
+    @Query("SELECT * FROM adaptation_decisions WHERE kind = :kind AND status = :status ORDER BY createdAtEpochMillis DESC, id DESC LIMIT 1")
+    suspend fun latestDecisionByKindAndStatus(kind: AdaptationKind, status: AdaptationStatus): AdaptationDecisionEntity?
 
     @Query("SELECT * FROM adaptation_decisions ORDER BY createdAtEpochMillis DESC, id DESC")
     fun observeDecisionHistory(): Flow<List<AdaptationDecisionEntity>>

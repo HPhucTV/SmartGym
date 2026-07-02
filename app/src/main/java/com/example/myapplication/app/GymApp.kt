@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -81,12 +82,32 @@ fun GymApp(container: AppContainer) {
                 replacementMode = replacing,
             )
         },
-        todayContent = {
+        homeContent = { onNavigateToWorkouts ->
             val factory = remember(container) {
                 viewModelFactory {
                     initializer {
-                        TodayViewModel(container.workoutRepository, container.catalogRepository.exercises,
-                            container.settingsRepository.settings.map { it.restDayMode }) { LocalDate.now().toEpochDay() }
+                        com.example.myapplication.feature.home.HomeViewModel(
+                            container.workoutRepository,
+                            container.nutritionRepository
+                        )
+                    }
+                }
+            }
+            val homeViewModel: com.example.myapplication.feature.home.HomeViewModel = viewModel(factory = factory)
+            val state by homeViewModel.uiState.collectAsStateWithLifecycle()
+            com.example.myapplication.feature.home.HomeScreen(state, onNavigateToWorkouts)
+        },
+        todayContent = { onNavigateToCatalog, onNavigateToNutrition ->
+            val factory = remember(container) {
+                viewModelFactory {
+                    initializer {
+                        TodayViewModel(
+                            repository = container.workoutRepository,
+                            exercises = container.catalogRepository.exercises,
+                            restDayOverride = container.settingsRepository.settings.map { it.restDayMode },
+                            nutritionRepository = container.nutritionRepository,
+                            currentEpochDay = { LocalDate.now().toEpochDay() }
+                        )
                     }
                 }
             }
@@ -101,12 +122,18 @@ fun GymApp(container: AppContainer) {
                 }
             }
             val state by todayViewModel.uiState.collectAsStateWithLifecycle()
-            TodayScreen(state, todayViewModel::setChecked, todayViewModel::completeWorkout, todayViewModel::retry)
+            TodayScreen(state, todayViewModel::setChecked, todayViewModel::completeWorkout, todayViewModel::retry, onNavigateToCatalog, onNavigateToNutrition, todayViewModel::refreshCoachTip)
         },
-        progressContent = {
+        progressContent = { onNavigateToCatalog ->
             val factory = remember(container) {
                 viewModelFactory {
-                    initializer { ProgressViewModel(container.workoutRepository) { LocalDate.now().toEpochDay() } }
+                    initializer {
+                        ProgressViewModel(
+                            container.workoutRepository,
+                            container.catalogRepository.programs,
+                            container.catalogRepository.exercises
+                        ) { LocalDate.now().toEpochDay() }
+                    }
                 }
             }
             val progressViewModel: ProgressViewModel = viewModel(factory = factory)
@@ -120,9 +147,9 @@ fun GymApp(container: AppContainer) {
                 }
             }
             val state by progressViewModel.uiState.collectAsStateWithLifecycle()
-            ProgressScreen(state, progressViewModel::previousMonth, progressViewModel::nextMonth)
+            ProgressScreen(state, progressViewModel::previousMonth, progressViewModel::nextMonth, onNavigateToCatalog)
         },
-        settingsContent = {
+        settingsContent = { onNavigateToProfile, onNavigateToCheckIn, onNavigateToRecommendations ->
             val factory = remember(container) { viewModelFactory { initializer {
                 SettingsViewModel(container.workoutRepository, container.settingsRepository, container.reminderScheduler)
             } } }
@@ -134,8 +161,124 @@ fun GymApp(container: AppContainer) {
                     if (Build.VERSION.SDK_INT >= 33) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 },
                 onNavigateToOnboarding = { replacing -> replacementMode = replacing },
+                onNavigateToProfile = onNavigateToProfile,
+                onNavigateToCheckIn = onNavigateToCheckIn,
+                onNavigateToRecommendations = onNavigateToRecommendations,
             )
         },
+        catalogContent = { onBack ->
+            com.example.myapplication.feature.catalog.ExerciseCatalogScreen(
+                exercises = container.catalogRepository.exercises,
+                onBack = onBack
+            )
+        },
+        nutritionContent = { onBack ->
+            val factory = remember(container) {
+                viewModelFactory {
+                    initializer {
+                        com.example.myapplication.feature.nutrition.NutritionViewModel(
+                            container.workoutRepository,
+                            container.nutritionRepository
+                        )
+                    }
+                }
+            }
+            val nutritionViewModel: com.example.myapplication.feature.nutrition.NutritionViewModel = viewModel(factory = factory)
+            val state by nutritionViewModel.uiState.collectAsStateWithLifecycle()
+            com.example.myapplication.feature.nutrition.NutritionScreen(
+                state = state,
+                onBack = onBack,
+                onScan = nutritionViewModel::scanFood,
+                onAccept = nutritionViewModel::acceptScanResult,
+                onDiscard = nutritionViewModel::discardScanResult,
+                onClearSweat = nutritionViewModel::clearSweat,
+                onReset = nutritionViewModel::resetDaily
+            )
+        },
+        profileContent = { onBack, onNavigateToSettings ->
+            val factory = remember(container) {
+                viewModelFactory {
+                    initializer {
+                        com.example.myapplication.feature.profile.ProfileViewModel(
+                            personalizationDao = container.database.personalizationDao(),
+                            workoutRepository = container.workoutRepository,
+                            nutritionRepository = container.nutritionRepository,
+                        )
+                    }
+                }
+            }
+            val profileViewModel: com.example.myapplication.feature.profile.ProfileViewModel = viewModel(factory = factory)
+            val state by profileViewModel.uiState.collectAsStateWithLifecycle()
+            com.example.myapplication.feature.profile.ProfileScreen(
+                state = state,
+                onBirthDateChanged = profileViewModel::updateBirthDate,
+                onMetabolicSexChanged = profileViewModel::updateMetabolicSex,
+                onHeightChanged = profileViewModel::updateHeight,
+                onCurrentWeightChanged = profileViewModel::updateCurrentWeight,
+                onTargetWeightChanged = profileViewModel::updateTargetWeight,
+                onActivityLevelChanged = profileViewModel::updateActivityLevel,
+                onGoalPaceChanged = profileViewModel::updateGoalPace,
+                onPersonalizationConsentChanged = profileViewModel::updatePersonalizationConsent,
+                onCloudAiConsentChanged = profileViewModel::updateCloudAiConsent,
+                onSave = profileViewModel::saveProfile,
+                onBack = {
+                    profileViewModel.clearSuccess()
+                    onBack()
+                },
+                onNavigateToSettings = onNavigateToSettings
+            )
+        },
+        checkinContent = { onBack, onNavigateToProfile ->
+            val factory = remember(container) {
+                viewModelFactory {
+                    initializer {
+                        com.example.myapplication.feature.checkin.WeeklyCheckInViewModel(
+                            personalizationDao = container.database.personalizationDao(),
+                            nutritionRepository = container.nutritionRepository,
+                        )
+                    }
+                }
+            }
+            val checkInViewModel: com.example.myapplication.feature.checkin.WeeklyCheckInViewModel = viewModel(factory = factory)
+            val state by checkInViewModel.uiState.collectAsStateWithLifecycle()
+            com.example.myapplication.feature.checkin.WeeklyCheckInScreen(
+                state = state,
+                onWeightChanged = checkInViewModel::updateWeight,
+                onEnergyChanged = checkInViewModel::updateEnergy,
+                onHungerChanged = checkInViewModel::updateHunger,
+                onRecoveryChanged = checkInViewModel::updateRecovery,
+                onSleepQualityChanged = checkInViewModel::updateSleepQuality,
+                onNoteChanged = checkInViewModel::updateNote,
+                onSubmit = checkInViewModel::submitCheckIn,
+                onBack = {
+                    checkInViewModel.clearSuccess()
+                    onBack()
+                },
+                onNavigateToProfile = onNavigateToProfile
+            )
+        },
+        recommendationsContent = { onBack ->
+            val factory = remember(container) {
+                viewModelFactory {
+                    initializer {
+                        com.example.myapplication.feature.recommendations.RecommendationViewModel(
+                            adaptationRepository = container.adaptationRepository,
+                            personalizationDao = container.database.personalizationDao(),
+                            coachExplanationClient = container.coachExplanationClient,
+                        )
+                    }
+                }
+            }
+            val recViewModel: com.example.myapplication.feature.recommendations.RecommendationViewModel = viewModel(factory = factory)
+            val state by recViewModel.uiState.collectAsStateWithLifecycle()
+            com.example.myapplication.feature.recommendations.RecommendationScreen(
+                state = state,
+                onAccept = recViewModel::acceptDecision,
+                onReject = recViewModel::rejectDecision,
+                onUndo = recViewModel::undoDecision,
+                onBack = onBack
+            )
+        }
     )
 }
 
@@ -144,31 +287,52 @@ fun GymApp(
     rootState: GymRootState,
     replacementMode: Boolean = false,
     noGoalContent: @Composable (Boolean) -> Unit = { DestinationScreen(AppDestination.ONBOARDING.heading) },
-    todayContent: @Composable () -> Unit = { DestinationScreen(AppDestination.TODAY.heading) },
-    progressContent: @Composable () -> Unit = { DestinationScreen(AppDestination.PROGRESS.heading) },
-    settingsContent: @Composable () -> Unit = { DestinationScreen(AppDestination.SETTINGS.heading) },
+    homeContent: @Composable (onNavigateToWorkouts: () -> Unit) -> Unit = { _ -> DestinationScreen(AppDestination.HOME.heading) },
+    todayContent: @Composable (onNavigateToCatalog: () -> Unit, onNavigateToNutrition: () -> Unit) -> Unit = { _, _ -> DestinationScreen(AppDestination.WORKOUTS.heading) },
+    progressContent: @Composable (onNavigateToCatalog: () -> Unit) -> Unit = { _ -> DestinationScreen(AppDestination.PROGRESS.heading) },
+    settingsContent: @Composable (onNavigateToProfile: () -> Unit, onNavigateToCheckIn: () -> Unit, onNavigateToRecommendations: () -> Unit) -> Unit = { _, _, _ -> DestinationScreen("Cài đặt") },
+    catalogContent: @Composable (onBack: (() -> Unit)?) -> Unit = {},
+    nutritionContent: @Composable (onBack: () -> Unit) -> Unit = {},
+    profileContent: @Composable (onBack: () -> Unit, onNavigateToSettings: (() -> Unit)?) -> Unit = { _, _ -> },
+    checkinContent: @Composable (onBack: () -> Unit, onNavigateToProfile: () -> Unit) -> Unit = { _, _ -> },
+    recommendationsContent: @Composable (onBack: () -> Unit) -> Unit = {},
 ) {
     when (rootState) {
         GymRootState.Loading -> LoadingScreen()
         GymRootState.NoGoal -> noGoalContent(replacementMode)
-        GymRootState.ActiveGoal -> ActiveGoalNavigation(todayContent, progressContent, settingsContent)
+        GymRootState.ActiveGoal -> ActiveGoalNavigation(
+            homeContent, todayContent, progressContent, settingsContent,
+            catalogContent, nutritionContent, profileContent, checkinContent, recommendationsContent
+        )
     }
 }
 
 @Composable
-private fun ActiveGoalNavigation(todayContent: @Composable () -> Unit, progressContent: @Composable () -> Unit, settingsContent: @Composable () -> Unit) {
+private fun ActiveGoalNavigation(
+    homeContent: @Composable (onNavigateToWorkouts: () -> Unit) -> Unit,
+    todayContent: @Composable (onNavigateToCatalog: () -> Unit, onNavigateToNutrition: () -> Unit) -> Unit,
+    progressContent: @Composable (onNavigateToCatalog: () -> Unit) -> Unit,
+    settingsContent: @Composable (onNavigateToProfile: () -> Unit, onNavigateToCheckIn: () -> Unit, onNavigateToRecommendations: () -> Unit) -> Unit,
+    catalogContent: @Composable (onBack: (() -> Unit)?) -> Unit,
+    nutritionContent: @Composable (onBack: () -> Unit) -> Unit,
+    profileContent: @Composable (onBack: () -> Unit, onNavigateToSettings: (() -> Unit)?) -> Unit,
+    checkinContent: @Composable (onBack: () -> Unit, onNavigateToProfile: () -> Unit) -> Unit,
+    recommendationsContent: @Composable (onBack: () -> Unit) -> Unit,
+) {
     val navController = rememberNavController()
     val destinations = listOf(
-        AppDestination.TODAY,
+        AppDestination.HOME,
+        AppDestination.WORKOUTS,
         AppDestination.PROGRESS,
-        AppDestination.SETTINGS,
+        AppDestination.SEARCH,
+        AppDestination.PROFILE,
     )
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                 destinations.forEach { destination ->
                     NavigationBarItem(
                         selected = currentRoute == destination.route,
@@ -182,7 +346,7 @@ private fun ActiveGoalNavigation(todayContent: @Composable () -> Unit, progressC
                             }
                         },
                         modifier = Modifier.testTag("nav-${destination.route}"),
-                        icon = {},
+                        icon = { Text(destination.iconText, fontSize = 20.sp) },
                         label = { Text(destination.navigationLabel) },
                     )
                 }
@@ -191,18 +355,58 @@ private fun ActiveGoalNavigation(todayContent: @Composable () -> Unit, progressC
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = AppDestination.TODAY.route,
+            startDestination = AppDestination.HOME.route,
             modifier = Modifier.padding(innerPadding),
         ) {
             destinations.forEach { destination ->
                 composable(destination.route) {
                     when (destination) {
-                        AppDestination.TODAY -> todayContent()
-                        AppDestination.PROGRESS -> progressContent()
-                        AppDestination.SETTINGS -> settingsContent()
+                        AppDestination.HOME -> homeContent {
+                            navController.navigate(AppDestination.WORKOUTS.route) {
+                                popUpTo(AppDestination.HOME.route) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                        AppDestination.WORKOUTS -> todayContent(
+                            { navController.navigate("exercise_catalog") },
+                            { navController.navigate("nutrition") }
+                        )
+                        AppDestination.PROGRESS -> progressContent { navController.navigate("exercise_catalog") }
+                        AppDestination.SEARCH -> catalogContent(null)
+                        AppDestination.PROFILE -> profileContent(
+                            {},
+                            { navController.navigate("settings") }
+                        )
                         else -> DestinationScreen(destination.heading)
                     }
                 }
+            }
+            composable("exercise_catalog") {
+                catalogContent { navController.popBackStack() }
+            }
+            composable("nutrition") {
+                nutritionContent { navController.popBackStack() }
+            }
+            composable("settings") {
+                settingsContent(
+                    { navController.popBackStack() }, // onNavigateToProfile -> go back to profile tab
+                    { navController.navigate("checkin") },
+                    { navController.navigate("recommendations") }
+                )
+            }
+            composable("checkin") {
+                checkinContent(
+                    { navController.popBackStack() },
+                    {
+                        navController.navigate(AppDestination.PROFILE.route) {
+                            popUpTo("checkin") { inclusive = true }
+                        }
+                    }
+                )
+            }
+            composable("recommendations") {
+                recommendationsContent { navController.popBackStack() }
             }
         }
     }

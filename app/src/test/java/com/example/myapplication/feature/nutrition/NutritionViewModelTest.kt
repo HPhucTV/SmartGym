@@ -1,0 +1,194 @@
+package com.example.myapplication.feature.nutrition
+
+import com.example.myapplication.core.model.ActiveGoal
+import com.example.myapplication.data.CompleteWorkoutResult
+import com.example.myapplication.core.model.CompletedWorkout
+import com.example.myapplication.core.model.EquipmentProfile
+import com.example.myapplication.core.model.ExperienceLevel
+import com.example.myapplication.core.model.FitnessGoal
+import com.example.myapplication.core.model.GoalConfig
+import com.example.myapplication.core.model.ProgramTemplate
+import com.example.myapplication.core.model.RestDayMode
+import com.example.myapplication.core.model.WorkoutSession
+import com.example.myapplication.core.nutrition.EntrySource
+import com.example.myapplication.core.nutrition.Nutrients
+import com.example.myapplication.core.nutrition.NutritionDay
+import com.example.myapplication.data.NutritionData
+import com.example.myapplication.data.NutritionRepository
+import com.example.myapplication.data.WorkoutRepository
+import com.example.myapplication.feature.onboarding.MainDispatcherRule
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Rule
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class NutritionViewModelTest {
+    private val dispatcher = StandardTestDispatcher()
+    @get:Rule val mainRule = MainDispatcherRule(dispatcher)
+
+    @Test
+    fun `accepted scan result is stored on the selected day`() = runTest(dispatcher) {
+        val nutritionRepository = FakeNutritionRepository()
+        val viewModel = NutritionViewModel(
+            workoutRepository = FakeWorkoutRepository(),
+            nutritionRepository = nutritionRepository,
+            foodAnalysisClient = FakeFoodAnalysisClient(scanResult()),
+            currentEpochDay = { 20636L },
+        )
+        collectUiState(viewModel)
+        runCurrent()
+
+        viewModel.scanFood(null)
+        advanceUntilIdle()
+        viewModel.acceptScanResult()
+        advanceUntilIdle()
+
+        assertEquals(20636L, nutritionRepository.additions.single().epochDay)
+        assertEquals(Nutrients(calories = 510, proteinGrams = 31, carbsGrams = 62, fatGrams = 16), nutritionRepository.additions.single().nutrients)
+        assertEquals(EntrySource.CAMERA_ANALYSIS, nutritionRepository.additions.single().source)
+    }
+
+    @Test
+    fun `http analysis failure is recoverable`() = runTest(dispatcher) {
+        val viewModel = NutritionViewModel(
+            workoutRepository = FakeWorkoutRepository(),
+            nutritionRepository = FakeNutritionRepository(),
+            foodAnalysisClient = FakeFoodAnalysisClient(null),
+            currentEpochDay = { 20636L },
+        )
+        collectUiState(viewModel)
+        runCurrent()
+
+        viewModel.scanFood(null)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value as NutritionUiState.Content
+        assertFalse(state.scanning)
+        assertNotNull(state.scanError)
+    }
+
+    @Test
+    fun `scan cancellation is not converted to a user error`() = runTest(dispatcher) {
+        val viewModel = NutritionViewModel(
+            workoutRepository = FakeWorkoutRepository(),
+            nutritionRepository = FakeNutritionRepository(),
+            foodAnalysisClient = FakeFoodAnalysisClient(failure = CancellationException("stop")),
+            currentEpochDay = { 20636L },
+        )
+        collectUiState(viewModel)
+        runCurrent()
+
+        viewModel.scanFood(null)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value as NutritionUiState.Content
+        assertFalse(state.scanning)
+        assertNull(state.scanError)
+    }
+
+    private fun TestScope.collectUiState(viewModel: NutritionViewModel) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect() }
+    }
+
+    private fun scanResult() = ScanResult(
+        dishName = "Com ga",
+        totalCalories = 510,
+        proteinGrams = 31,
+        carbsGrams = 62,
+        fatGrams = 16,
+        fitnessScore = 7,
+        advice = "On voi muc tieu hom nay.",
+        constituents = emptyList(),
+        sweatPayment = SweatPaymentProposal(
+            exerciseId = "bodyweight_squat",
+            exerciseName = "Squat khong ta",
+            extraSets = 1,
+        ),
+    )
+}
+
+private class FakeFoodAnalysisClient(
+    private val result: ScanResult? = null,
+    private val failure: Throwable? = null,
+) : FoodAnalysisClient {
+    override suspend fun analyze(bitmap: android.graphics.Bitmap?): ScanResult? {
+        failure?.let { throw it }
+        return result
+    }
+}
+
+private data class AddedNutrition(
+    val epochDay: Long,
+    val nutrients: Nutrients,
+    val source: EntrySource,
+)
+
+private class FakeNutritionRepository : NutritionRepository {
+    private val data = MutableStateFlow(NutritionData())
+    val additions = mutableListOf<AddedNutrition>()
+
+    override val nutritionData: Flow<NutritionData> = data
+
+    override fun observeDay(epochDay: Long): Flow<NutritionDay> =
+        flowOf(NutritionDay(epochDay = epochDay, consumed = Nutrients(), target = null))
+
+    override fun observeRange(startEpochDay: Long, endEpochDay: Long): Flow<List<NutritionDay>> = flowOf(emptyList())
+
+    override suspend fun addNutrients(epochDay: Long, nutrients: Nutrients, source: EntrySource) {
+        additions += AddedNutrition(epochDay, nutrients, source)
+        data.value = data.value.copy(
+            caloriesEaten = data.value.caloriesEaten + nutrients.calories,
+            proteinEaten = data.value.proteinEaten + nutrients.proteinGrams,
+            carbsEaten = data.value.carbsEaten + nutrients.carbsGrams,
+            fatEaten = data.value.fatEaten + nutrients.fatGrams,
+        )
+    }
+
+    override suspend fun setTarget(epochDay: Long, target: com.example.myapplication.core.nutrition.NutritionTarget) = Unit
+    override suspend fun setSweatPayment(exerciseId: String, exerciseName: String, extraSets: Int, active: Boolean) = Unit
+    override suspend fun clearSweatPayment() = Unit
+    override suspend fun updateAiCoachReview(review: String) = Unit
+    override suspend fun resetDaily() = Unit
+}
+
+private class FakeWorkoutRepository : WorkoutRepository {
+    override fun observeActiveGoal(): Flow<ActiveGoal?> = flowOf(
+        ActiveGoal(
+            id = 1,
+            config = GoalConfig(
+                goal = FitnessGoal.GENERAL_FITNESS,
+                level = ExperienceLevel.BEGINNER,
+                equipmentProfile = EquipmentProfile.BODYWEIGHT_ONLY,
+                sessionsPerWeek = 3,
+                durationWeeks = 4,
+                restDayMode = RestDayMode.FULL_REST,
+            ),
+            totalWorkouts = 12,
+        ),
+    )
+    override fun observeCurrentWorkout(): Flow<WorkoutSession?> = flowOf(null)
+    override fun observeCompletedWorkouts(): Flow<List<CompletedWorkout>> = flowOf(emptyList())
+    override suspend fun createGoal(config: GoalConfig, program: ProgramTemplate, startEpochDay: Long) = Unit
+    override suspend fun setExerciseChecked(sessionId: Long, orderIndex: Int, checked: Boolean) = Unit
+    override suspend fun completeWorkout(sessionId: Long, completedEpochDay: Long): CompleteWorkoutResult = CompleteWorkoutResult.Completed
+    override suspend fun archiveActiveGoal() = Unit
+}
+
+
+

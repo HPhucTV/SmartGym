@@ -11,6 +11,9 @@ fun SettingsRoute(
     viewModel: SettingsViewModel,
     onRequestNotificationPermission: () -> Unit,
     onNavigateToOnboarding: (Boolean) -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToCheckIn: () -> Unit,
+    onNavigateToRecommendations: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
@@ -29,6 +32,10 @@ fun SettingsRoute(
         onRequestDelete = viewModel::requestDeleteGoal,
         onCancel = viewModel::cancelConfirmation,
         onConfirm = viewModel::confirmGoalAction,
+        onNavigateToProfile = onNavigateToProfile,
+        onNavigateToCheckIn = onNavigateToCheckIn,
+        onNavigateToRecommendations = onNavigateToRecommendations,
+        onBack = onNavigateToProfile
     )
 }
 

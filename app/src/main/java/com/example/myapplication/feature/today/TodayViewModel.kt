@@ -5,15 +5,24 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.core.model.*
 import com.example.myapplication.data.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 class TodayViewModel(
     private val repository: WorkoutRepository,
     exercises: List<ExerciseDefinition>,
     private val restDayOverride: Flow<RestDayMode?> = flowOf(null),
+    private val nutritionRepository: NutritionRepository? = null,
     private val currentEpochDay: () -> Long,
 ) : ViewModel() {
     private data class Operations(
@@ -21,6 +30,14 @@ class TodayViewModel(
         val pending: Set<Pair<Long, Int>> = emptySet(),
         val interactionError: Pair<Long, String>? = null,
         val completionError: Pair<Long, String>? = null,
+    )
+
+    private data class ActiveGoalFlowBundle(
+        val goal: ActiveGoal?,
+        val session: WorkoutSession?,
+        val day: Long,
+        val ops: Operations,
+        val rest: RestDayMode?,
     )
 
     private val catalog = exercises.associateBy { it.id }
@@ -31,10 +48,31 @@ class TodayViewModel(
     val uiState: StateFlow<TodayUiState> = _uiState.asStateFlow()
     private var retrySession: Long? = null
 
+    private var lastGoalConfig: GoalConfig? = null
+    private var lastSessionTitle: String? = ""
+    private var lastSessionDue: Long = 0
+    private val isRefreshingCoach = MutableStateFlow(false)
+
+    private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
+
     init {
         viewModelScope.launch {
-            combine(repository.observeActiveGoal(), repository.observeCurrentWorkout(), today, operations, restDayOverride) { goal, session, day, ops, rest ->
-                resolve(goal, session, day, ops, rest)
+            val nutritionFlow = nutritionRepository?.nutritionData ?: flowOf(NutritionData())
+            val mainFlow = combine(
+                repository.observeActiveGoal(),
+                repository.observeCurrentWorkout(),
+                today,
+                operations,
+                restDayOverride
+            ) { goal, session, day, ops, rest ->
+                ActiveGoalFlowBundle(goal, session, day, ops, rest)
+            }
+
+            combine(mainFlow, nutritionFlow) { bundle, nutrition ->
+                resolve(bundle.goal, bundle.session, bundle.day, bundle.ops, bundle.rest, nutrition)
             }.collect { _uiState.value = it }
         }
     }
@@ -43,22 +81,19 @@ class TodayViewModel(
 
     fun setChecked(orderIndex: Int, checked: Boolean) {
         val state = _uiState.value as? TodayUiState.Workout ?: return
-        val key = state.sessionId to orderIndex
-        if (state.isCompleting || key in operations.value.pending || state.rows.none { it.orderIndex == orderIndex }) return
-        operations.value = operations.value.copy(
-            pending = operations.value.pending + key,
-            interactionError = null,
-        )
+        if (state.isCompleting || orderIndex in state.pendingOrderIndices) return
+        operations.update { it.copy(pending = it.pending + (state.sessionId to orderIndex), interactionError = null) }
         viewModelScope.launch {
-            try {
-                commandMutex.withLock { repository.setExerciseChecked(state.sessionId, orderIndex, checked) }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                operations.value = operations.value.copy(
-                    interactionError = state.sessionId to "Không thể cập nhật bài tập. Vui lòng thử lại.")
-            } finally {
-                operations.value = operations.value.copy(pending = operations.value.pending - key)
+            commandMutex.withLock {
+                try {
+                    repository.setExerciseChecked(state.sessionId, orderIndex, checked)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    operations.update { it.copy(interactionError = state.sessionId to (error.message ?: "Lỗi phản hồi.")) }
+                } finally {
+                    operations.update { it.copy(pending = it.pending - (state.sessionId to orderIndex)) }
+                }
             }
         }
     }
@@ -78,44 +113,192 @@ class TodayViewModel(
 
     private fun complete(sessionId: Long) {
         retrySession = sessionId
-        operations.value = operations.value.copy(completingSessionId = sessionId, completionError = null)
+        operations.update { it.copy(completingSessionId = sessionId, completionError = null) }
         viewModelScope.launch {
             try {
-                when (commandMutex.withLock { repository.completeWorkout(sessionId, currentEpochDay()) }) {
-                    CompleteWorkoutResult.Completed, CompleteWorkoutResult.AlreadyCompleted -> Unit
-                    CompleteWorkoutResult.BlockedByUncheckedExercises -> operations.value = operations.value.copy(
-                        interactionError = sessionId to "Vẫn còn bài tập chưa được đánh dấu hoàn thành.")
+                val result = commandMutex.withLock { repository.completeWorkout(sessionId, currentEpochDay()) }
+                when (result) {
+                    CompleteWorkoutResult.Completed, CompleteWorkoutResult.AlreadyCompleted -> {
+                        nutritionRepository?.clearSweatPayment()
+                    }
+                    CompleteWorkoutResult.BlockedByUncheckedExercises -> {
+                        operations.update { it.copy(
+                            interactionError = sessionId to "Vẫn còn bài tập chưa được đánh dấu hoàn thành."
+                        ) }
+                    }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                operations.value = operations.value.copy(completionError = sessionId to "Không thể hoàn thành buổi tập. Vui lòng thử lại.")
+                operations.update { it.copy(
+                    completionError = sessionId to "Không thể hoàn thành buổi tập. Vui lòng thử lại."
+                ) }
             } finally {
-                if (operations.value.completingSessionId == sessionId) {
-                    operations.value = operations.value.copy(completingSessionId = null)
+                operations.update {
+                    if (it.completingSessionId == sessionId) {
+                        it.copy(completingSessionId = null)
+                    } else it
                 }
             }
         }
     }
 
-    private fun resolve(goal: ActiveGoal?, session: WorkoutSession?, day: Long, ops: Operations, restOverride: RestDayMode?): TodayUiState {
+    fun refreshCoachTip() {
+        val goalConfig = lastGoalConfig ?: return
+        val sessionTitle = lastSessionTitle ?: ""
+        val completedToday = lastSessionDue > today.value
+        val nutrition = nutritionRepository ?: return
+
+        if (isRefreshingCoach.value) return
+        isRefreshingCoach.value = true
+        operations.update { it.copy() }
+
+        viewModelScope.launch {
+            try {
+                val nutritionData = nutrition.nutritionData.first()
+                val limit = when (goalConfig.goal) {
+                    FitnessGoal.MUSCLE_GAIN -> 2700
+                    FitnessGoal.FAT_LOSS_CONDITIONING -> 1800
+                    FitnessGoal.ENDURANCE -> 2200
+                    FitnessGoal.GENERAL_FITNESS -> 2000
+                }
+
+                val jsonObject = JSONObject().apply {
+                    put("goal", when (goalConfig.goal) {
+                        FitnessGoal.MUSCLE_GAIN -> "Tăng cơ"
+                        FitnessGoal.FAT_LOSS_CONDITIONING -> "Giảm cân"
+                        FitnessGoal.ENDURANCE -> "Sức bền"
+                        FitnessGoal.GENERAL_FITNESS -> "Khỏe mạnh"
+                    })
+                    put("level", when (goalConfig.level) {
+                        ExperienceLevel.BEGINNER -> "Mới bắt đầu"
+                        ExperienceLevel.INTERMEDIATE -> "Trung cấp"
+                    })
+                    put("sessionTitle", sessionTitle)
+                    put("completedToday", completedToday)
+                    put("caloriesEaten", nutritionData.caloriesEaten)
+                    put("calorieLimit", limit)
+                    put("proteinEaten", nutritionData.proteinEaten)
+                    put("carbsEaten", nutritionData.carbsEaten)
+                    put("fatEaten", nutritionData.fatEaten)
+                    put("sweatActive", nutritionData.sweatActive)
+                    put("sweatExerciseName", nutritionData.sweatExerciseName ?: "")
+                    put("sweatExtraSets", nutritionData.sweatExtraSets)
+                }
+
+                val mediaType = "application/json; charset=utf-8".toMediaType()
+                val requestBody = jsonObject.toString().toRequestBody(mediaType)
+                val request = Request.Builder()
+                    .url("http://10.0.2.2:3000/api/coach-review")
+                    .post(requestBody)
+                    .build()
+
+                val reviewText = withContext(Dispatchers.IO) {
+                    okHttpClient.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            val bodyString = response.body?.string()
+                            if (!bodyString.isNullOrEmpty()) {
+                                JSONObject(bodyString).optString("review")
+                            } else null
+                        } else null
+                    }
+                }
+
+                if (!reviewText.isNullOrEmpty()) {
+                    nutrition.updateAiCoachReview(reviewText)
+                } else {
+                    val fallbackAdvice = SmartCoachAdvisor.getLocalAdvice(
+                        goalConfig.goal,
+                        completedToday,
+                        nutritionData,
+                        sessionTitle
+                    )
+                    nutrition.updateAiCoachReview(fallbackAdvice)
+                }
+            } catch (e: Exception) {
+                try {
+                    val nutritionData = nutrition.nutritionData.first()
+                    val fallbackAdvice = SmartCoachAdvisor.getLocalAdvice(
+                        goalConfig.goal,
+                        completedToday,
+                        nutritionData,
+                        sessionTitle
+                    )
+                    nutrition.updateAiCoachReview(fallbackAdvice)
+                } catch (_: Exception) {}
+            } finally {
+                isRefreshingCoach.value = false
+                operations.update { it.copy() }
+            }
+        }
+    }
+
+    private fun resolve(
+        goal: ActiveGoal?,
+        session: WorkoutSession?,
+        day: Long,
+        ops: Operations,
+        restOverride: RestDayMode?,
+        nutrition: NutritionData = NutritionData()
+    ): TodayUiState {
         ops.completionError?.takeIf { it.first == session?.id }?.let { return TodayUiState.Error(it.second, canRetry = true) }
         if (goal == null) return TodayUiState.Error("Không tìm thấy mục tiêu đang hoạt động.")
         if (session == null) return TodayUiState.GoalComplete
-        if (session.dueEpochDay > day) return TodayUiState.Recovery(
-            if ((restOverride ?: goal.config.restDayMode) == RestDayMode.FULL_REST) RecoveryKind.FULL_REST else RecoveryKind.LIGHT_RECOVERY,
-            session.dueEpochDay)
+
+        val isRecovery = session.dueEpochDay > day
+        lastGoalConfig = goal.config
+        lastSessionTitle = session.titleVi
+        lastSessionDue = session.dueEpochDay
+
+        val coachTip = nutrition.aiCoachReview?.takeIf { it.isNotEmpty() }
+            ?: SmartCoachAdvisor.getLocalAdvice(
+                goal = goal.config.goal,
+                completedToday = isRecovery,
+                nutrition = nutrition,
+                sessionTitle = session.titleVi
+            )
+
+        if (isRecovery) return TodayUiState.Recovery(
+            kind = if ((restOverride ?: goal.config.restDayMode) == RestDayMode.FULL_REST) RecoveryKind.FULL_REST else RecoveryKind.LIGHT_RECOVERY,
+            nextDueEpochDay = session.dueEpochDay,
+            coachTip = coachTip,
+            isRefreshingCoach = isRefreshingCoach.value
+        )
+
         val rows = session.exercises.sortedBy { it.orderIndex }.map { exercise ->
             val definition = catalog[exercise.exerciseId] ?: return TodayUiState.Error(
                 "Không tìm thấy bài tập '${exercise.exerciseId}' trong dữ liệu ứng dụng.")
-            WorkoutRowUi(exercise.orderIndex, definition.nameVi, exercise.prescription.displayText(),
-                exercise.prescription.restSeconds, definition.instructionsVi, exercise.checked, exercise.exerciseId)
+
+            val isSweatMatch = nutrition.sweatActive && nutrition.sweatExerciseId == exercise.exerciseId
+            val finalPrescriptionText = if (isSweatMatch && nutrition.sweatExtraSets > 0) {
+                exercise.prescription.displayText() + " (+${nutrition.sweatExtraSets} hiệp bù calo 🔥)"
+            } else {
+                exercise.prescription.displayText()
+            }
+
+            WorkoutRowUi(exercise.orderIndex, definition.nameVi, finalPrescriptionText,
+                exercise.prescription.restSeconds, definition.instructionsVi, exercise.checked, exercise.exerciseId,
+                definition.primaryMuscle)
         }
         val pending = ops.pending.filter { it.first == session.id }.map { it.second }.toSet()
         val checked = rows.count { it.checked }
-        return TodayUiState.Workout(session.id, session.titleVi, session.focusVi, session.estimatedMinutes,
-            rows, checked, rows.size, rows.isNotEmpty() && checked == rows.size && pending.isEmpty(),
-            ops.completingSessionId == session.id, pending, ops.interactionError?.takeIf { it.first == session.id }?.second)
+        val hour = try { java.time.LocalTime.now().hour } catch (_: Exception) { 8 }
+        return TodayUiState.Workout(
+            sessionId = session.id,
+            titleVi = session.titleVi,
+            focusVi = session.focusVi,
+            estimatedMinutes = session.estimatedMinutes,
+            rows = rows,
+            checkedCount = checked,
+            total = rows.size,
+            canComplete = rows.isNotEmpty() && checked == rows.size && pending.isEmpty(),
+            isCompleting = ops.completingSessionId == session.id,
+            pendingOrderIndices = pending,
+            interactionError = ops.interactionError?.takeIf { it.first == session.id }?.second,
+            greetingHour = hour,
+            coachTip = coachTip,
+            isRefreshingCoach = isRefreshingCoach.value
+        )
     }
 }
 

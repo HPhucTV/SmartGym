@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Gym App</string>
+    <string name="app_name">SmartGym</string>
     <string name="reminder_channel">Nhắc tập luyện</string>
     <string name="reminder_title">Đến giờ vận động</string>
     <string name="reminder_body">Bài tập hôm nay đang chờ bạn hoàn thành.</string>

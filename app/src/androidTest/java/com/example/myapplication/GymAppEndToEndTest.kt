@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ActivityScenario
@@ -89,7 +90,7 @@ class GymAppEndToEndTest {
             composeRule.onAllNodesWithText("1/12 buổi").fetchSemanticsNodes().isNotEmpty()
         }
         val completedDate = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-        composeRule.onNodeWithContentDescription("Đã hoàn thành ngày $completedDate").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Đã hoàn thành ngày $completedDate").performScrollTo().assertIsDisplayed()
 
         composeRule.onNodeWithTag("nav-today").performClick()
         scenario.recreate()

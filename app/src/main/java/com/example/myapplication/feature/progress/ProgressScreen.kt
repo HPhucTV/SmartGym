@@ -1,5 +1,7 @@
 package com.example.myapplication.feature.progress
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,46 +21,117 @@ fun ProgressScreen(
     state: ProgressUiState,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
+    onNavigateToCatalog: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    when (state) {
-        ProgressUiState.Loading -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = EnergyOrange, modifier = Modifier.semantics { contentDescription = "Đang tải tiến độ" })
+    val colors = MaterialTheme.colorScheme
+
+    Box(modifier = modifier.fillMaxSize().background(colors.background)) {
+        when (state) {
+            ProgressUiState.Loading -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = EnergyOrange, modifier = Modifier.semantics { contentDescription = "Đang tải tiến độ" })
+            }
+            is ProgressUiState.Content -> ProgressContent(state, onPreviousMonth, onNextMonth, onNavigateToCatalog)
+            is ProgressUiState.NoActiveGoal -> ProgressWithoutGoal(state, onPreviousMonth, onNextMonth, onNavigateToCatalog)
         }
-        is ProgressUiState.Content -> ProgressContent(state, onPreviousMonth, onNextMonth, modifier)
-        is ProgressUiState.NoActiveGoal -> ProgressWithoutGoal(state, onPreviousMonth, onNextMonth, modifier)
     }
 }
 
 @Composable
-private fun ProgressContent(state: ProgressUiState.Content, previous: () -> Unit, next: () -> Unit, modifier: Modifier) {
-    ProgressLayout(modifier) {
-        Text("Tiến độ tập luyện", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Navy)
+private fun ProgressContent(
+    state: ProgressUiState.Content,
+    previous: () -> Unit,
+    next: () -> Unit,
+    onNavigateToCatalog: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    ProgressLayout {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Tiến độ tập luyện", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = customColors.primaryText)
+            Text(
+                "📚 Tra cứu",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = EnergyOrange,
+                modifier = Modifier.clickable { onNavigateToCatalog() }.padding(4.dp)
+            )
+        }
+
         SummaryCard(state)
-        CalendarCard(state.selectedMonth, state.markedEpochDays, state.completedInMonth,
-            state.canNavigatePrevious, state.canNavigateNext, previous, next)
+
+        // Progress Charts (Weekly frequency & MuscleFocus)
+        ProgressChartsSection(
+            weeklyStats = state.weeklyStats,
+            targetPerWeek = state.targetPerWeek,
+            muscleStats = state.muscleStats
+        )
+
+        CalendarCard(
+            state.selectedMonth, state.markedEpochDays, state.completedInMonth,
+            state.canNavigatePrevious, state.canNavigateNext, previous, next
+        )
     }
 }
 
 @Composable
-private fun ProgressWithoutGoal(state: ProgressUiState.NoActiveGoal, previous: () -> Unit, next: () -> Unit, modifier: Modifier) {
-    ProgressLayout(modifier) {
-        Text("Tiến độ tập luyện", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Navy)
-        Surface(color = SurfaceGray, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+private fun ProgressWithoutGoal(
+    state: ProgressUiState.NoActiveGoal,
+    previous: () -> Unit,
+    next: () -> Unit,
+    onNavigateToCatalog: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    ProgressLayout {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Tiến độ tập luyện", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = customColors.primaryText)
+            Text(
+                "📚 Tra cứu",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = EnergyOrange,
+                modifier = Modifier.clickable { onNavigateToCatalog() }.padding(4.dp)
+            )
+        }
+
+        Surface(color = colors.surfaceVariant, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(20.dp)) {
-                Text("Chưa có mục tiêu đang hoạt động", fontWeight = FontWeight.Bold, color = Navy)
-                Text("Lịch vẫn lưu các buổi bạn đã hoàn thành.", color = MutedText)
+                Text("Chưa có mục tiêu đang hoạt động", fontWeight = FontWeight.Bold, color = customColors.primaryText)
+                Text("Lịch vẫn lưu các buổi bạn đã hoàn thành.", color = customColors.mutedText)
             }
         }
-        CalendarCard(state.selectedMonth, state.markedEpochDays, state.completedInMonth,
-            state.canNavigatePrevious, state.canNavigateNext, previous, next)
+
+        // Show weekly completed stats even without active goal
+        if (state.weeklyStats.isNotEmpty()) {
+            ProgressChartsSection(
+                weeklyStats = state.weeklyStats,
+                targetPerWeek = 3, // Default fallback target
+                muscleStats = emptyList()
+            )
+        }
+
+        CalendarCard(
+            state.selectedMonth, state.markedEpochDays, state.completedInMonth,
+            state.canNavigatePrevious, state.canNavigateNext, previous, next
+        )
     }
 }
 
 @Composable
-private fun ProgressLayout(modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
+private fun ProgressLayout(content: @Composable ColumnScope.() -> Unit) {
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
         content = content,
     )
@@ -66,32 +139,49 @@ private fun ProgressLayout(modifier: Modifier, content: @Composable ColumnScope.
 
 @Composable
 private fun SummaryCard(state: ProgressUiState.Content) {
-    Surface(color = SurfaceGray, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    Surface(color = colors.surfaceVariant, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("${state.percentage}%", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold, color = Navy)
+            Text("${state.percentage}%", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold, color = customColors.primaryText)
             LinearProgressIndicator(
                 progress = { state.percentage / 100f },
                 modifier = Modifier.fillMaxWidth().height(10.dp),
                 color = SuccessGreen,
-                trackColor = BorderGray,
+                trackColor = colors.outline,
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${state.completedActive}/${state.totalActive} buổi", color = Navy, fontWeight = FontWeight.SemiBold)
+                Text("${state.completedActive}/${state.totalActive} buổi", color = customColors.primaryText, fontWeight = FontWeight.SemiBold)
                 Text("Chuỗi ${state.weeklyStreak} tuần", color = SuccessGreen, fontWeight = FontWeight.Bold)
             }
-            Text("Mục tiêu ${state.targetPerWeek} buổi mỗi tuần", color = MutedText)
+            Text("Mục tiêu ${state.targetPerWeek} buổi mỗi tuần", color = customColors.mutedText)
         }
     }
 }
 
 @Composable
-private fun CalendarCard(month: java.time.YearMonth, marks: Set<Long>, count: Int, canPrevious: Boolean,
-                         canNext: Boolean, previous: () -> Unit, next: () -> Unit) {
-    Surface(color = White, shape = RoundedCornerShape(16.dp), border = androidx.compose.foundation.BorderStroke(1.dp, BorderGray),
-        modifier = Modifier.fillMaxWidth()) {
+private fun CalendarCard(
+    month: java.time.YearMonth,
+    marks: Set<Long>,
+    count: Int,
+    canPrevious: Boolean,
+    canNext: Boolean,
+    previous: () -> Unit,
+    next: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    Surface(
+        color = colors.surface,
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, colors.outline),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             MonthCalendar(month, marks, canPrevious, canNext, previous, next)
-            Text("$count buổi hoàn thành trong tháng", color = MutedText, style = MaterialTheme.typography.bodySmall)
+            Text("$count buổi hoàn thành trong tháng", color = customColors.mutedText, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

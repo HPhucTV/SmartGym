@@ -23,4 +23,12 @@ class AppContainer(context: Context) {
     val workoutRepository = RoomWorkoutRepository(database)
     val settingsRepository = DataStoreSettingsRepository(applicationContext)
     val reminderScheduler = AlarmReminderScheduler(applicationContext)
+    val nutritionRepository = com.example.myapplication.data.RoomNutritionRepository(database.personalizationDao(), com.example.myapplication.data.DataStoreNutritionPreferences(applicationContext), { java.time.LocalDate.now().toEpochDay() })
+    val adaptationRepository = com.example.myapplication.data.RoomAdaptationRepository(
+        database = database,
+        personalizationDao = database.personalizationDao(),
+        nutritionRepository = nutritionRepository
+    )
+    val coachExplanationClient = com.example.myapplication.data.OkHttpCoachExplanationClient()
 }
+

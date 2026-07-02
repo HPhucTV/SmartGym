@@ -38,6 +38,7 @@ class SettingsScreenTest {
                         if (state.value.confirmation == PendingConfirmation.DELETE) delete++ else replace++
                         state.value = state.value.copy(confirmation = PendingConfirmation.NONE)
                     },
+                    {}, {}, {}
                 )
             }
         }
@@ -62,6 +63,6 @@ class SettingsScreenTest {
         RestDayMode.LIGHT_RECOVERY, false, 20, 0)
     private fun set(state: SettingsUiState.Content, onRest: (RestDayMode) -> Unit = {}, onReminder: (Boolean) -> Unit = {},
         onReplace: () -> Unit = {}, onDelete: () -> Unit = {}) = rule.setContent {
-        GymAppTheme { SettingsScreen(state, onRest, onReminder, { _, _ -> }, onReplace, onDelete, {}, {}) }
+        GymAppTheme { SettingsScreen(state, onRest, onReminder, { _, _ -> }, onReplace, onDelete, {}, {}, {}, {}, {}) }
     }
 }

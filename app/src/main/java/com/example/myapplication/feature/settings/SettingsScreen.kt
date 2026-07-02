@@ -12,7 +12,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import com.example.myapplication.ui.theme.customColors
 import com.example.myapplication.core.model.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.testTag
+import com.example.myapplication.ui.theme.EnergyOrange
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun SettingsScreen(
@@ -24,12 +32,17 @@ fun SettingsScreen(
     onRequestDelete: () -> Unit,
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToCheckIn: () -> Unit,
+    onNavigateToRecommendations: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     when (state) {
         SettingsUiState.Loading -> Box(Modifier.fillMaxSize()) { CircularProgressIndicator() }
         is SettingsUiState.Error -> Text(state.message, Modifier.padding(24.dp))
         is SettingsUiState.Content -> SettingsContent(
             state, onRest, onReminder, onTime, onRequestReplace, onRequestDelete, onCancel, onConfirm,
+            onNavigateToProfile, onNavigateToCheckIn, onNavigateToRecommendations, onBack
         )
     }
 }
@@ -44,14 +57,37 @@ private fun SettingsContent(
     onDelete: () -> Unit,
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToCheckIn: () -> Unit,
+    onNavigateToRecommendations: () -> Unit,
+    onBack: (() -> Unit)?,
 ) {
     val context = LocalContext.current
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        Modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Cài đặt", style = MaterialTheme.typography.headlineMedium)
-        Card {
+        if (onBack != null) {
+            Text(
+                "← Quay lại",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = EnergyOrange,
+                modifier = Modifier
+                    .clickable { onBack() }
+                    .padding(vertical = 4.dp)
+            )
+        }
+        Text("Cài đặt", style = MaterialTheme.typography.headlineMedium, color = customColors.primaryText)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant)
+        ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(goalLabel(state.goal.goal), style = MaterialTheme.typography.titleLarge)
                 Text("${levelLabel(state.goal.level)} • ${equipmentLabel(state.goal.equipment)}")
@@ -102,6 +138,42 @@ private fun SettingsContent(
         }
         OutlinedButton(onClick = onReplace, enabled = !state.saving, modifier = Modifier.fillMaxWidth()) {
             Text("Đổi mục tiêu")
+        }
+        Text("Cá nhân hóa", style = MaterialTheme.typography.titleMedium)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, colors.outline),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = onNavigateToProfile,
+                    modifier = Modifier.fillMaxWidth().height(48.dp).testTag("settings-profile-button"),
+                    colors = ButtonDefaults.buttonColors(containerColor = EnergyOrange),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("HỒ SƠ CÁ NHÂN", fontWeight = FontWeight.Bold)
+                }
+                OutlinedButton(
+                    onClick = onNavigateToCheckIn,
+                    modifier = Modifier.fillMaxWidth().height(48.dp).testTag("settings-checkin-button"),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = EnergyOrange),
+                    border = BorderStroke(1.dp, EnergyOrange),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("CHECK-IN TUẦN", fontWeight = FontWeight.Bold)
+                }
+                OutlinedButton(
+                    onClick = onNavigateToRecommendations,
+                    modifier = Modifier.fillMaxWidth().height(48.dp).testTag("settings-recommendations-button"),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = EnergyOrange),
+                    border = BorderStroke(1.dp, EnergyOrange),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("ĐỀ XUẤT THÍCH NGHI", fontWeight = FontWeight.Bold)
+                }
+            }
         }
         TextButton(
             onClick = onDelete,
