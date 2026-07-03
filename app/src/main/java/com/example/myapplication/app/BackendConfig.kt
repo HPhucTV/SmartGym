@@ -43,7 +43,7 @@ object BackendConfig {
 }
 
 internal fun resolveBackendBaseUrl(customUrl: String?, emulator: Boolean): String? =
-    normalizeServerUrl(customUrl) ?: if (emulator) EMULATOR_BACKEND_URL else null
+    normalizeServerUrl(customUrl) ?: if (emulator) EMULATOR_BACKEND_URL else DEFAULT_PHYSICAL_BACKEND_URL
 
 internal fun normalizeServerUrl(value: String?): String? {
     val trimmed = value?.trim()?.trimEnd('/')?.takeIf { it.isNotEmpty() } ?: return null
@@ -58,3 +58,4 @@ internal fun normalizeServerUrl(value: String?): String? {
 }
 
 private const val EMULATOR_BACKEND_URL = "http://10.0.2.2:3000"
+private const val DEFAULT_PHYSICAL_BACKEND_URL = "https://gym-app-w7sz.onrender.com"

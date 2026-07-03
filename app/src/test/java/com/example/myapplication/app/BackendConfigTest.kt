@@ -17,9 +17,9 @@ class BackendConfigTest {
     }
 
     @Test
-    fun `physical device has no hidden developer host fallback`() {
+    fun `physical device defaults to Render backend URL`() {
         assertEquals("http://10.0.2.2:3000", resolveBackendBaseUrl(customUrl = null, emulator = true))
-        assertNull(resolveBackendBaseUrl(customUrl = null, emulator = false))
+        assertEquals("https://gym-app-w7sz.onrender.com", resolveBackendBaseUrl(customUrl = null, emulator = false))
         assertEquals(
             "https://coach.example.com",
             resolveBackendBaseUrl(customUrl = "https://coach.example.com/", emulator = false),
