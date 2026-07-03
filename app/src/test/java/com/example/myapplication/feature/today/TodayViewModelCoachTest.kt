@@ -142,6 +142,7 @@ private class CoachNutritionRepository : NutritionRepository {
         ),
     )
     override fun observeRange(startEpochDay: Long, endEpochDay: Long) = flowOf(emptyList<com.example.myapplication.core.nutrition.NutritionDay>())
+    override fun observeAllNutrition() = flowOf(emptyList<com.example.myapplication.core.nutrition.NutritionDay>())
     override suspend fun addNutrients(epochDay: Long, nutrients: com.example.myapplication.core.nutrition.Nutrients, source: com.example.myapplication.core.nutrition.EntrySource) = Unit
     override suspend fun setTarget(epochDay: Long, target: com.example.myapplication.core.nutrition.NutritionTarget) = Unit
     override suspend fun setSweatPayment(exerciseId: String, exerciseName: String, extraSets: Int, active: Boolean) = Unit

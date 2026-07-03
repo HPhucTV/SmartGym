@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.theme.EnergyOrange
 import com.example.myapplication.ui.theme.SuccessGreen
 import com.example.myapplication.ui.theme.customColors
+import com.example.myapplication.core.nutrition.NutritionDay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +72,7 @@ fun NutritionScreen(
                 )
             )
         },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = colors.background
     ) { paddingValues ->
         Box(
@@ -136,6 +138,38 @@ fun NutritionScreen(
                                 .clickable { onReset() }
                                 .padding(8.dp)
                         )
+
+                        Spacer(Modifier.height(24.dp))
+
+                        // Title
+                        Text(
+                            text = "Lịch sử dinh dưỡng 📊",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = customColors.primaryText,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Start
+                        )
+
+                        if (state.history.isEmpty()) {
+                            Surface(
+                                color = colors.surfaceVariant,
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "Chưa có lịch sử dinh dưỡng những ngày trước.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = customColors.mutedText,
+                                    modifier = Modifier.padding(20.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        } else {
+                            state.history.forEach { day ->
+                                HistoryItemCard(day)
+                            }
+                        }
                     }
                 }
             }
@@ -397,3 +431,82 @@ private fun NutrientTag(label: String, value: String, modifier: Modifier = Modif
         }
     }
 }
+
+@Composable
+private fun HistoryItemCard(day: NutritionDay) {
+    val colors = MaterialTheme.colorScheme
+    val customColors = colors.customColors
+
+    val targetCalories = day.target?.calories ?: 2000
+    val caloriesEaten = day.consumed.calories
+    val progress = if (targetCalories > 0) caloriesEaten.toFloat() / targetCalories else 0f
+    val isOverLimit = caloriesEaten > targetCalories
+
+    val localDate = java.time.LocalDate.ofEpochDay(day.epochDay)
+    val vietnamese = java.util.Locale.forLanguageTag("vi-VN")
+    val formatter = java.time.format.DateTimeFormatter.ofPattern("EEEE, dd/MM", vietnamese)
+
+    val today = java.time.LocalDate.now().toEpochDay()
+    val dateText = when (day.epochDay) {
+        today - 1 -> "Hôm qua"
+        else -> localDate.format(formatter).replaceFirstChar {
+            if (it.isLowerCase()) it.titlecase(vietnamese) else it.toString()
+        }
+    }
+
+    Surface(
+        color = colors.surfaceVariant,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = dateText,
+                        fontWeight = FontWeight.Bold,
+                        color = customColors.primaryText,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Đạm: ${day.consumed.proteinGrams}g  •  Tinh bột: ${day.consumed.carbsGrams}g  •  Béo: ${day.consumed.fatGrams}g",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = customColors.mutedText
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "$caloriesEaten / $targetCalories kcal",
+                        fontWeight = FontWeight.Bold,
+                        color = if (isOverLimit) colors.error else SuccessGreen,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "${(progress * 100).toInt()}% mục tiêu",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = customColors.mutedText
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = { progress.coerceAtMost(1f) },
+                color = if (isOverLimit) colors.error else SuccessGreen,
+                trackColor = colors.outline,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+            )
+        }
+    }
+}
+

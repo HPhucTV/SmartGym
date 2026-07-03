@@ -36,6 +36,7 @@ sealed interface NutritionUiState {
         val scanResult: ScanResult?,
         val scanning: Boolean,
         val scanError: String?,
+        val history: List<NutritionDay> = emptyList(),
     ) : NutritionUiState
 }
 
@@ -85,17 +86,26 @@ class NutritionViewModel(
     val uiState: StateFlow<NutritionUiState> = combine(
         workoutRepository.observeActiveGoal(),
         nutritionParts,
+        nutritionRepository.observeAllNutrition(),
         scanningState,
         scanResultState,
         scanErrorState,
-    ) { goal, nutrition, scanning, scanResult, scanError ->
+    ) { array ->
+        val goal = array[0] as? com.example.myapplication.core.model.ActiveGoal
+        val nutrition = array[1] as NutritionStateParts
+        val allNutrition = array[2] as List<NutritionDay>
+        val scanning = array[3] as Boolean
+        val scanResult = array[4] as ScanResult?
+        val scanError = array[5] as String?
+
         val fallbackLimit = when (goal?.config?.goal) {
-            FitnessGoal.MUSCLE_GAIN -> 2700
-            FitnessGoal.FAT_LOSS_CONDITIONING -> 1800
-            FitnessGoal.ENDURANCE -> 2200
-            FitnessGoal.GENERAL_FITNESS -> 2000
+            com.example.myapplication.core.model.FitnessGoal.MUSCLE_GAIN -> 2700
+            com.example.myapplication.core.model.FitnessGoal.FAT_LOSS_CONDITIONING -> 1800
+            com.example.myapplication.core.model.FitnessGoal.ENDURANCE -> 2200
+            com.example.myapplication.core.model.FitnessGoal.GENERAL_FITNESS -> 2000
             null -> 2000
         }
+        val history = allNutrition.filter { it.epochDay < todayEpochDay && it.consumed.calories > 0 }
         NutritionUiState.Content(
             calorieLimit = nutrition.today.target?.calories ?: fallbackLimit,
             caloriesEaten = nutrition.data.caloriesEaten,
@@ -108,6 +118,7 @@ class NutritionViewModel(
             scanResult = scanResult,
             scanning = scanning,
             scanError = scanError,
+            history = history,
         )
     }.stateIn(
         scope = viewModelScope,

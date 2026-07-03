@@ -230,6 +230,7 @@ private class FakePersonalizationDao : PersonalizationDao {
     override suspend fun upsertDailyNutrition(day: DailyNutritionEntity) = Unit
     override fun observeNutritionDay(epochDay: Long): Flow<DailyNutritionEntity?> = flowOf(null)
     override fun observeNutritionRange(startEpochDay: Long, endEpochDay: Long): Flow<List<DailyNutritionEntity>> = flowOf(emptyList())
+    override fun observeAllNutrition(): Flow<List<DailyNutritionEntity>> = flowOf(emptyList())
     override suspend fun nutritionRangeNow(startEpochDay: Long, endEpochDay: Long): List<DailyNutritionEntity> = emptyList()
 
     override suspend fun upsertWeeklyCheckIn(checkIn: WeeklyCheckInEntity) {
@@ -253,6 +254,7 @@ private class FakeNutritionRepository : NutritionRepository {
     override val nutritionData: Flow<NutritionData> = flowOf(NutritionData())
     override fun observeDay(epochDay: Long): Flow<NutritionDay> = flowOf(NutritionDay(epochDay, Nutrients(), null))
     override fun observeRange(startEpochDay: Long, endEpochDay: Long): Flow<List<NutritionDay>> = flowOf(emptyList())
+    override fun observeAllNutrition(): Flow<List<NutritionDay>> = flowOf(emptyList())
     override suspend fun addNutrients(epochDay: Long, nutrients: Nutrients, source: EntrySource) = Unit
     
     override suspend fun setTarget(epochDay: Long, target: NutritionTarget) {

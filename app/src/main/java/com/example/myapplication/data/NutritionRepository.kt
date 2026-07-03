@@ -1,4 +1,4 @@
-﻿package com.example.myapplication.data
+package com.example.myapplication.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.Preferences
@@ -72,6 +72,7 @@ interface NutritionRepository {
     val nutritionData: Flow<NutritionData>
     fun observeDay(epochDay: Long): Flow<NutritionDay>
     fun observeRange(startEpochDay: Long, endEpochDay: Long): Flow<List<NutritionDay>>
+    fun observeAllNutrition(): Flow<List<NutritionDay>>
     suspend fun addNutrients(epochDay: Long, nutrients: Nutrients, source: EntrySource)
     suspend fun setTarget(epochDay: Long, target: NutritionTarget)
     suspend fun setSweatPayment(exerciseId: String, exerciseName: String, extraSets: Int, active: Boolean)
@@ -123,6 +124,14 @@ class RoomNutritionRepository(
         emitAll(
             personalizationDao.observeNutritionRange(startEpochDay, endEpochDay)
                 .map { rows -> rows.map { it.toNutritionDay(it.epochDay) } },
+        )
+    }
+
+    override fun observeAllNutrition(): Flow<List<NutritionDay>> = flow {
+        ensureLegacyMigration()
+        emitAll(
+            personalizationDao.observeAllNutrition()
+                .map { rows -> rows.map { it.toNutritionDay(it.epochDay) } }
         )
     }
 

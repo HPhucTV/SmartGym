@@ -164,6 +164,9 @@ private class FakePersonalizationDao : PersonalizationDao {
     override fun observeNutritionDay(epochDay: Long): Flow<DailyNutritionEntity?> =
         nutritionRows.map { rows -> rows[epochDay] }
 
+    override fun observeAllNutrition(): Flow<List<DailyNutritionEntity>> =
+        nutritionRows.map { rows -> rows.values.sortedByDescending { it.epochDay } }
+
     override fun observeNutritionRange(startEpochDay: Long, endEpochDay: Long): Flow<List<DailyNutritionEntity>> =
         nutritionRows.map { rows ->
             rows.values

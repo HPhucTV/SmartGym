@@ -43,6 +43,9 @@ interface PersonalizationDao {
     @Query("SELECT * FROM daily_nutrition WHERE epochDay BETWEEN :startEpochDay AND :endEpochDay ORDER BY epochDay ASC")
     suspend fun nutritionRangeNow(startEpochDay: Long, endEpochDay: Long): List<DailyNutritionEntity>
 
+    @Query("SELECT * FROM daily_nutrition ORDER BY epochDay DESC")
+    fun observeAllNutrition(): Flow<List<DailyNutritionEntity>>
+
     @Upsert
     suspend fun upsertWeeklyCheckIn(checkIn: WeeklyCheckInEntity)
 

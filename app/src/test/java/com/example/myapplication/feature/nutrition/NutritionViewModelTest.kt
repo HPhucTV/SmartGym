@@ -137,6 +137,36 @@ class NutritionViewModelTest {
         assertFalse(state.scanning)
     }
 
+    @Test
+    fun `history lists past entries with logged calories`() = runTest(dispatcher) {
+        val repo = FakeNutritionRepository()
+        val today = 20636L
+        
+        repo.historyData.value = listOf(
+            NutritionDay(today, Nutrients(calories = 500), null),
+            NutritionDay(today - 1, Nutrients(calories = 1200), null),
+            NutritionDay(today - 2, Nutrients(calories = 0), null),
+            NutritionDay(today - 3, Nutrients(calories = 1500), null),
+        )
+        
+        val viewModel = NutritionViewModel(
+            workoutRepository = FakeWorkoutRepository(),
+            nutritionRepository = repo,
+            foodAnalysisClient = FakeFoodAnalysisClient(),
+            cloudAiConsent = flowOf(true),
+            currentEpochDay = { today },
+        )
+        collectUiState(viewModel)
+        runCurrent()
+        
+        val state = viewModel.uiState.value as NutritionUiState.Content
+        assertEquals(2, state.history.size)
+        assertEquals(today - 1, state.history[0].epochDay)
+        assertEquals(1200, state.history[0].consumed.calories)
+        assertEquals(today - 3, state.history[1].epochDay)
+        assertEquals(1500, state.history[1].consumed.calories)
+    }
+
     private fun TestScope.collectUiState(viewModel: NutritionViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect() }
     }
@@ -187,6 +217,9 @@ private class FakeNutritionRepository : NutritionRepository {
         flowOf(NutritionDay(epochDay = epochDay, consumed = Nutrients(), target = null))
 
     override fun observeRange(startEpochDay: Long, endEpochDay: Long): Flow<List<NutritionDay>> = flowOf(emptyList())
+
+    val historyData = MutableStateFlow<List<NutritionDay>>(emptyList())
+    override fun observeAllNutrition(): Flow<List<NutritionDay>> = historyData
 
     override suspend fun addNutrients(epochDay: Long, nutrients: Nutrients, source: EntrySource) {
         additions += AddedNutrition(epochDay, nutrients, source)
