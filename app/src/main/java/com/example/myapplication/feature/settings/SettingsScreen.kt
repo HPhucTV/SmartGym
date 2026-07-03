@@ -215,35 +215,7 @@ private fun SettingsContent(
             }
         }
 
-        Text("Máy chủ kết nối (AI Analysis)", style = MaterialTheme.typography.titleMedium)
-        Card(
-            colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, colors.outline),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Địa chỉ URL/IP của server máy tính. Để trống để sử dụng mặc định.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = customColors.mutedText
-                )
-                OutlinedTextField(
-                    value = state.customServerUrl ?: "",
-                    onValueChange = { newUrl ->
-                        val urlToSave = newUrl.trim().takeIf { it.isNotEmpty() }
-                        onServerUrlChanged(urlToSave)
-                    },
-                    placeholder = { Text("Ví dụ: http://192.168.1.7:3000") },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EnergyOrange,
-                        focusedLabelColor = EnergyOrange
-                    ),
-                    modifier = Modifier.fillMaxWidth().testTag("settings-server-url-field")
-                )
-            }
-        }
+
 
         TextButton(
             onClick = onDelete,
