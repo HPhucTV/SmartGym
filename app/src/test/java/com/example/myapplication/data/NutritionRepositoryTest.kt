@@ -178,6 +178,7 @@ private class FakePersonalizationDao : PersonalizationDao {
 
     override suspend fun upsertWeeklyCheckIn(checkIn: WeeklyCheckInEntity) = Unit
     override fun observeLatestCheckIn(): Flow<WeeklyCheckInEntity?> = MutableStateFlow(null)
+    override fun observeAllCheckIns(): Flow<List<WeeklyCheckInEntity>> = MutableStateFlow(emptyList())
     override suspend fun latestCheckInNow(): WeeklyCheckInEntity? = null
     override suspend fun insertDecision(decision: AdaptationDecisionEntity): Long = 1L
     override suspend fun updateDecisionStatus(id: Long, status: com.example.myapplication.core.adaptation.AdaptationStatus, resolvedAt: Long) = Unit

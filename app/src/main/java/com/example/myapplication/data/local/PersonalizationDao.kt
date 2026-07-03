@@ -49,6 +49,9 @@ interface PersonalizationDao {
     @Query("SELECT * FROM weekly_check_ins ORDER BY weekStartEpochDay DESC LIMIT 1")
     fun observeLatestCheckIn(): Flow<WeeklyCheckInEntity?>
 
+    @Query("SELECT * FROM weekly_check_ins ORDER BY weekStartEpochDay DESC")
+    fun observeAllCheckIns(): Flow<List<WeeklyCheckInEntity>>
+
     @Query("SELECT * FROM weekly_check_ins ORDER BY weekStartEpochDay DESC LIMIT 1")
     suspend fun latestCheckInNow(): WeeklyCheckInEntity?
 

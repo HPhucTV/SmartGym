@@ -136,7 +136,7 @@ class AdaptiveJourneyEndToEndTest {
             currentTarget = initialTarget,
             averageConsumedCalories = 2300,
             adherencePercent = 0.85,
-            recentWeights = listOf(78.2, 78.0), // weight trend slightly down, but target is 72, so decrease needed
+            recentWeights = listOf(78.0, 78.2), // stalled/gaining while target is lower, so a decrease is needed
             targetWeightKg = 72.0,
             latestCheckIn = CheckInData(4, 3, 5, 4),
             consecutiveLowRecoveryCheckIns = 0,

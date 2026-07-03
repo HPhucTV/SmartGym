@@ -32,12 +32,16 @@ class SettingsViewModel(
                 if (goal == null) SettingsUiState.Error("Không tìm thấy mục tiêu đang hoạt động.") else SettingsUiState.Content(
                     GoalSummary(goal.config.goal, goal.config.level, goal.config.equipmentProfile, goal.config.sessionsPerWeek, goal.config.durationWeeks),
                     prefs.restDayMode ?: goal.config.restDayMode, prefs.reminderEnabled, prefs.reminderHour, prefs.reminderMinute,
-                    busy, pending, note)
+                    prefs.customServerUrl, prefs.darkModeEnabled, busy, pending, note)
             }.collect { _uiState.value = it }
         }
     }
 
     fun setRestDayMode(mode: RestDayMode) = perform { settingsRepository.setRestDayMode(mode) }
+
+    fun setCustomServerUrl(url: String?) = perform { settingsRepository.setCustomServerUrl(url) }
+
+    fun setDarkModeEnabled(enabled: Boolean?) = perform { settingsRepository.setDarkModeEnabled(enabled) }
 
     fun setReminderTime(hour: Int, minute: Int) {
         if (!startSaving()) return

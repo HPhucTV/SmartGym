@@ -1,5 +1,15 @@
 # Checklist rà soát chương trình tập preset
 
+## Rà soát lịch thích ứng
+
+- Mỗi tổ hợp mục tiêu, trình độ và dụng cụ có đúng một chương trình nền đã kiểm duyệt.
+- Các buổi tuần đầu tạo thành chu kỳ blueprint có thứ tự cho lịch 1–6 buổi/tuần.
+- Bài trong mỗi buổi được xếp từ thiết yếu đến bổ trợ; buổi ngắn giữ các bài đứng trước.
+- Biến thể 30 phút luôn có bài và giữ trọng tâm vận động chính.
+- Các mốc dài hơn chỉ thêm bài đã có trong chương trình nền, không tự sinh hoặc chọn ngẫu nhiên.
+- Cùng một cấu hình luôn tạo cùng snapshot buổi tập.
+- Trước khi phát hành cần rà thủ công đầu ra 30, 45, 60, 75 và 90 phút.
+
 - Ngày rà soát dự án: **2026-06-30**
 - Phạm vi: 6 chương trình, 116 buổi tập đã mở rộng theo tuần trong `programs.json`.
 - Trạng thái rà soát: kiểm tra tự động và kiểm tra bằng agent đã đạt; chưa có người dùng hoặc chuyên gia bên ngoài rà soát từng buổi.

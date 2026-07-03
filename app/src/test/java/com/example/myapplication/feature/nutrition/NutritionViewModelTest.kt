@@ -42,6 +42,16 @@ class NutritionViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     @get:Rule val mainRule = MainDispatcherRule(dispatcher)
 
+    @org.junit.Before
+    fun setUp() {
+        com.example.myapplication.app.BackendConfig.customServerUrl = "http://localhost:3000"
+    }
+
+    @org.junit.After
+    fun tearDown() {
+        com.example.myapplication.app.BackendConfig.customServerUrl = null
+    }
+
     @Test
     fun `accepted scan result is stored on the selected day`() = runTest(dispatcher) {
         val nutritionRepository = FakeNutritionRepository()
@@ -49,6 +59,7 @@ class NutritionViewModelTest {
             workoutRepository = FakeWorkoutRepository(),
             nutritionRepository = nutritionRepository,
             foodAnalysisClient = FakeFoodAnalysisClient(scanResult()),
+            cloudAiConsent = flowOf(true),
             currentEpochDay = { 20636L },
         )
         collectUiState(viewModel)
@@ -70,6 +81,7 @@ class NutritionViewModelTest {
             workoutRepository = FakeWorkoutRepository(),
             nutritionRepository = FakeNutritionRepository(),
             foodAnalysisClient = FakeFoodAnalysisClient(null),
+            cloudAiConsent = flowOf(true),
             currentEpochDay = { 20636L },
         )
         collectUiState(viewModel)
@@ -89,6 +101,7 @@ class NutritionViewModelTest {
             workoutRepository = FakeWorkoutRepository(),
             nutritionRepository = FakeNutritionRepository(),
             foodAnalysisClient = FakeFoodAnalysisClient(failure = CancellationException("stop")),
+            cloudAiConsent = flowOf(true),
             currentEpochDay = { 20636L },
         )
         collectUiState(viewModel)
@@ -100,6 +113,28 @@ class NutritionViewModelTest {
         val state = viewModel.uiState.value as NutritionUiState.Content
         assertFalse(state.scanning)
         assertNull(state.scanError)
+    }
+
+    @Test
+    fun `food image is never uploaded without cloud AI consent`() = runTest(dispatcher) {
+        val client = FakeFoodAnalysisClient(scanResult())
+        val viewModel = NutritionViewModel(
+            workoutRepository = FakeWorkoutRepository(),
+            nutritionRepository = FakeNutritionRepository(),
+            foodAnalysisClient = client,
+            cloudAiConsent = flowOf(false),
+            currentEpochDay = { 20636L },
+        )
+        collectUiState(viewModel)
+        runCurrent()
+
+        viewModel.scanFood(null)
+        advanceUntilIdle()
+
+        assertEquals(0, client.calls)
+        val state = viewModel.uiState.value as NutritionUiState.Content
+        assertNotNull(state.scanError)
+        assertFalse(state.scanning)
     }
 
     private fun TestScope.collectUiState(viewModel: NutritionViewModel) {
@@ -127,7 +162,10 @@ private class FakeFoodAnalysisClient(
     private val result: ScanResult? = null,
     private val failure: Throwable? = null,
 ) : FoodAnalysisClient {
+    var calls = 0
+
     override suspend fun analyze(bitmap: android.graphics.Bitmap?): ScanResult? {
+        calls++
         failure?.let { throw it }
         return result
     }

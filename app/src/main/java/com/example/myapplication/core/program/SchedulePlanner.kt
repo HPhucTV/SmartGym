@@ -1,6 +1,27 @@
 package com.example.myapplication.core.program
 
+import java.time.DayOfWeek
+import java.time.LocalDate
+
 object SchedulePlanner {
+    fun dueEpochDays(
+        startEpochDay: Long,
+        trainingDays: Set<DayOfWeek>,
+        workoutCount: Int,
+    ): List<Long> {
+        require(trainingDays.size in 1..6) { "Training days must contain 1..6 weekdays" }
+        require(workoutCount >= 0) { "Workout count cannot be negative" }
+        if (workoutCount == 0) return emptyList()
+
+        return buildList(workoutCount) {
+            var cursor = startEpochDay
+            while (size < workoutCount) {
+                if (LocalDate.ofEpochDay(cursor).dayOfWeek in trainingDays) add(cursor)
+                if (size < workoutCount) cursor = Math.addExact(cursor, 1L)
+            }
+        }
+    }
+
     fun dueEpochDays(startEpochDay: Long, restDaysAfter: List<Int>): List<Long> {
         require(restDaysAfter.all { it >= 0 }) { "Rest days cannot be negative" }
         if (restDaysAfter.isEmpty()) return emptyList()

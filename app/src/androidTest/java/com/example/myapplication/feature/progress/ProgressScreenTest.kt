@@ -7,6 +7,7 @@ import com.example.myapplication.ui.theme.GymAppTheme
 import java.time.LocalDate
 import java.time.YearMonth
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,7 +46,9 @@ class ProgressScreenTest {
     @Test fun leap_month_has_monday_headers_and_day_29() {
         val state = content(emptySet()).copy(selectedMonth = YearMonth.of(2024, 2))
         set(state)
-        listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN").forEach { rule.onNodeWithText(it).assertExists() }
+        listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN").forEach {
+            assertTrue(rule.onAllNodesWithText(it).fetchSemanticsNodes().isNotEmpty())
+        }
         rule.onNodeWithContentDescription("Ngày 29/02/2024").assertExists()
         rule.onAllNodesWithContentDescription("Ngày 30/02/2024").assertCountEquals(0)
         rule.onNodeWithTag("calendar-blank-0").assertExists()

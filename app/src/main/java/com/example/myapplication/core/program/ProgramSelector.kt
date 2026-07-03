@@ -17,9 +17,7 @@ object ProgramSelector {
         val matches = programs.filter {
             it.goal == config.goal &&
                 it.level == config.level &&
-                it.equipmentProfile == config.equipmentProfile &&
-                it.sessionsPerWeek == config.sessionsPerWeek &&
-                it.durationWeeks == config.durationWeeks
+                it.equipmentProfile == config.equipmentProfile
         }
         require(matches.size <= 1) { "Duplicate programs for $config" }
         return matches.singleOrNull()?.let(ProgramSelectionResult::Found)

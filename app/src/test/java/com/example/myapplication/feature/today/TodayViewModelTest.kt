@@ -85,6 +85,7 @@ class TodayViewModelTest {
         repository.completionResult = CompleteWorkoutResult.AlreadyCompleted
         vm.completeWorkout(); advanceUntilIdle()
         assertFalse((vm.uiState.value as TodayUiState.Workout).isCompleting)
+        assertFalse(vm.celebration.value.showConfetti)
     }
 
     @Test fun `completion cancellation runs cleanup and leaves surviving workout interactive`() = runTest(dispatcher) {

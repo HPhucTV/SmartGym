@@ -35,10 +35,12 @@ import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.feature.onboarding.OnboardingRoute
 import com.example.myapplication.feature.today.TodayScreen
 import com.example.myapplication.feature.today.TodayViewModel
+import com.example.myapplication.feature.today.CelebrationState
 import com.example.myapplication.feature.progress.ProgressScreen
 import com.example.myapplication.feature.progress.ProgressViewModel
 import com.example.myapplication.feature.settings.SettingsRoute
 import com.example.myapplication.feature.settings.SettingsViewModel
+import com.example.myapplication.data.Settings
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -63,6 +65,15 @@ fun GymApp(container: AppContainer) {
             .map { goal -> if (goal == null) GymRootState.NoGoal else GymRootState.ActiveGoal }
     }
     val rootState by rootStateFlow.collectAsStateWithLifecycle(initialValue = GymRootState.Loading)
+    val settingsFlow = remember(container.settingsRepository) {
+        container.settingsRepository.settings
+    }
+    val settingsState by settingsFlow.collectAsStateWithLifecycle(initialValue = null)
+    LaunchedEffect(settingsState) {
+        settingsState?.let {
+            BackendConfig.customServerUrl = it.customServerUrl
+        }
+    }
     var replacementMode by rememberSaveable { mutableStateOf(false) }
     var replacementWasShown by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(rootState) {
@@ -82,20 +93,28 @@ fun GymApp(container: AppContainer) {
                 replacementMode = replacing,
             )
         },
-        homeContent = { onNavigateToWorkouts ->
+        homeContent = { onNavigateToWorkouts, onNavigateToNutrition, onNavigateToCheckIn, onNavigateToRecommendations, onNavigateToAchievements ->
             val factory = remember(container) {
                 viewModelFactory {
                     initializer {
                         com.example.myapplication.feature.home.HomeViewModel(
                             container.workoutRepository,
-                            container.nutritionRepository
+                            container.nutritionRepository,
+                            container.motivationRepository
                         )
                     }
                 }
             }
             val homeViewModel: com.example.myapplication.feature.home.HomeViewModel = viewModel(factory = factory)
             val state by homeViewModel.uiState.collectAsStateWithLifecycle()
-            com.example.myapplication.feature.home.HomeScreen(state, onNavigateToWorkouts)
+            com.example.myapplication.feature.home.HomeScreen(
+                state = state,
+                onNavigateToWorkouts = onNavigateToWorkouts,
+                onNavigateToNutrition = onNavigateToNutrition,
+                onNavigateToCheckIn = onNavigateToCheckIn,
+                onNavigateToRecommendations = onNavigateToRecommendations,
+                onNavigateToAchievements = onNavigateToAchievements,
+            )
         },
         todayContent = { onNavigateToCatalog, onNavigateToNutrition ->
             val factory = remember(container) {
@@ -106,7 +125,13 @@ fun GymApp(container: AppContainer) {
                             exercises = container.catalogRepository.exercises,
                             restDayOverride = container.settingsRepository.settings.map { it.restDayMode },
                             nutritionRepository = container.nutritionRepository,
-                            currentEpochDay = { LocalDate.now().toEpochDay() }
+                            currentEpochDay = { LocalDate.now().toEpochDay() },
+                            achievementChecker = container.achievementChecker,
+                            coachCoordinator = com.example.myapplication.feature.today.TodayCoachCoordinator(
+                                container.coachReviewClient,
+                            ),
+                            cloudAiConsent = container.database.personalizationDao().observeProfile()
+                                .map { profile -> profile?.cloudAiConsent == true },
                         )
                     }
                 }
@@ -122,7 +147,18 @@ fun GymApp(container: AppContainer) {
                 }
             }
             val state by todayViewModel.uiState.collectAsStateWithLifecycle()
-            TodayScreen(state, todayViewModel::setChecked, todayViewModel::completeWorkout, todayViewModel::retry, onNavigateToCatalog, onNavigateToNutrition, todayViewModel::refreshCoachTip)
+            val celebrationState by todayViewModel.celebration.collectAsStateWithLifecycle()
+            TodayScreen(
+                state = state,
+                onCheckedChange = todayViewModel::setChecked,
+                onComplete = todayViewModel::completeWorkout,
+                onRetry = todayViewModel::retry,
+                onNavigateToCatalog = onNavigateToCatalog,
+                onNavigateToNutrition = onNavigateToNutrition,
+                onRefreshCoachTip = todayViewModel::refreshCoachTip,
+                celebrationState = celebrationState,
+                onDismissCelebration = todayViewModel::dismissCelebration,
+            )
         },
         progressContent = { onNavigateToCatalog ->
             val factory = remember(container) {
@@ -147,7 +183,12 @@ fun GymApp(container: AppContainer) {
                 }
             }
             val state by progressViewModel.uiState.collectAsStateWithLifecycle()
-            ProgressScreen(state, progressViewModel::previousMonth, progressViewModel::nextMonth, onNavigateToCatalog)
+            ProgressScreen(
+                state = state,
+                onPreviousMonth = progressViewModel::previousMonth,
+                onNextMonth = progressViewModel::nextMonth,
+                onNavigateToCatalog = onNavigateToCatalog,
+            )
         },
         settingsContent = { onNavigateToProfile, onNavigateToCheckIn, onNavigateToRecommendations ->
             val factory = remember(container) { viewModelFactory { initializer {
@@ -177,8 +218,11 @@ fun GymApp(container: AppContainer) {
                 viewModelFactory {
                     initializer {
                         com.example.myapplication.feature.nutrition.NutritionViewModel(
-                            container.workoutRepository,
-                            container.nutritionRepository
+                            workoutRepository = container.workoutRepository,
+                            nutritionRepository = container.nutritionRepository,
+                            foodAnalysisClient = container.foodAnalysisClient,
+                            cloudAiConsent = container.database.personalizationDao().observeProfile()
+                                .map { profile -> profile?.cloudAiConsent == true },
                         )
                     }
                 }
@@ -278,6 +322,14 @@ fun GymApp(container: AppContainer) {
                 onUndo = recViewModel::undoDecision,
                 onBack = onBack
             )
+        },
+        achievementsContent = { onBack ->
+            val achievementsFlow = remember(container) { container.database.achievementDao().observeAll() }
+            val unlockedList by achievementsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+            com.example.myapplication.feature.achievement.AchievementScreen(
+                unlockedList = unlockedList,
+                onBack = onBack
+            )
         }
     )
 }
@@ -287,29 +339,43 @@ fun GymApp(
     rootState: GymRootState,
     replacementMode: Boolean = false,
     noGoalContent: @Composable (Boolean) -> Unit = { DestinationScreen(AppDestination.ONBOARDING.heading) },
-    homeContent: @Composable (onNavigateToWorkouts: () -> Unit) -> Unit = { _ -> DestinationScreen(AppDestination.HOME.heading) },
+    homeContent: @Composable (
+        onNavigateToWorkouts: () -> Unit,
+        onNavigateToNutrition: () -> Unit,
+        onNavigateToCheckIn: () -> Unit,
+        onNavigateToRecommendations: () -> Unit,
+        onNavigateToAchievements: () -> Unit,
+    ) -> Unit = { _, _, _, _, _ -> DestinationScreen(AppDestination.HOME.heading) },
     todayContent: @Composable (onNavigateToCatalog: () -> Unit, onNavigateToNutrition: () -> Unit) -> Unit = { _, _ -> DestinationScreen(AppDestination.WORKOUTS.heading) },
     progressContent: @Composable (onNavigateToCatalog: () -> Unit) -> Unit = { _ -> DestinationScreen(AppDestination.PROGRESS.heading) },
-    settingsContent: @Composable (onNavigateToProfile: () -> Unit, onNavigateToCheckIn: () -> Unit, onNavigateToRecommendations: () -> Unit) -> Unit = { _, _, _ -> DestinationScreen("Cài đặt") },
+    settingsContent: @Composable (onNavigateToProfile: () -> Unit, onNavigateToCheckIn: () -> Unit, onNavigateToRecommendations: () -> Unit) -> Unit = { _, _, _ -> DestinationScreen(AppDestination.SETTINGS.heading) },
     catalogContent: @Composable (onBack: (() -> Unit)?) -> Unit = {},
     nutritionContent: @Composable (onBack: () -> Unit) -> Unit = {},
     profileContent: @Composable (onBack: () -> Unit, onNavigateToSettings: (() -> Unit)?) -> Unit = { _, _ -> },
     checkinContent: @Composable (onBack: () -> Unit, onNavigateToProfile: () -> Unit) -> Unit = { _, _ -> },
     recommendationsContent: @Composable (onBack: () -> Unit) -> Unit = {},
+    achievementsContent: @Composable (onBack: () -> Unit) -> Unit = {},
 ) {
     when (rootState) {
         GymRootState.Loading -> LoadingScreen()
         GymRootState.NoGoal -> noGoalContent(replacementMode)
         GymRootState.ActiveGoal -> ActiveGoalNavigation(
             homeContent, todayContent, progressContent, settingsContent,
-            catalogContent, nutritionContent, profileContent, checkinContent, recommendationsContent
+            catalogContent, nutritionContent, profileContent, checkinContent, recommendationsContent,
+            achievementsContent
         )
     }
 }
 
 @Composable
 private fun ActiveGoalNavigation(
-    homeContent: @Composable (onNavigateToWorkouts: () -> Unit) -> Unit,
+    homeContent: @Composable (
+        onNavigateToWorkouts: () -> Unit,
+        onNavigateToNutrition: () -> Unit,
+        onNavigateToCheckIn: () -> Unit,
+        onNavigateToRecommendations: () -> Unit,
+        onNavigateToAchievements: () -> Unit,
+    ) -> Unit,
     todayContent: @Composable (onNavigateToCatalog: () -> Unit, onNavigateToNutrition: () -> Unit) -> Unit,
     progressContent: @Composable (onNavigateToCatalog: () -> Unit) -> Unit,
     settingsContent: @Composable (onNavigateToProfile: () -> Unit, onNavigateToCheckIn: () -> Unit, onNavigateToRecommendations: () -> Unit) -> Unit,
@@ -318,14 +384,13 @@ private fun ActiveGoalNavigation(
     profileContent: @Composable (onBack: () -> Unit, onNavigateToSettings: (() -> Unit)?) -> Unit,
     checkinContent: @Composable (onBack: () -> Unit, onNavigateToProfile: () -> Unit) -> Unit,
     recommendationsContent: @Composable (onBack: () -> Unit) -> Unit,
+    achievementsContent: @Composable (onBack: () -> Unit) -> Unit,
 ) {
     val navController = rememberNavController()
     val destinations = listOf(
         AppDestination.HOME,
-        AppDestination.WORKOUTS,
         AppDestination.PROGRESS,
-        AppDestination.SEARCH,
-        AppDestination.PROFILE,
+        AppDestination.SETTINGS,
     )
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -337,12 +402,16 @@ private fun ActiveGoalNavigation(
                     NavigationBarItem(
                         selected = currentRoute == destination.route,
                         onClick = {
-                            navController.navigate(destination.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                            if (destination == AppDestination.HOME) {
+                                navController.popBackStack(AppDestination.HOME.route, inclusive = false)
+                            } else {
+                                navController.navigate(destination.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
                         },
                         modifier = Modifier.testTag("nav-${destination.route}"),
@@ -361,39 +430,49 @@ private fun ActiveGoalNavigation(
             destinations.forEach { destination ->
                 composable(destination.route) {
                     when (destination) {
-                        AppDestination.HOME -> homeContent {
-                            navController.navigate(AppDestination.WORKOUTS.route) {
-                                popUpTo(AppDestination.HOME.route) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                        AppDestination.WORKOUTS -> todayContent(
-                            { navController.navigate("exercise_catalog") },
-                            { navController.navigate("nutrition") }
+                        AppDestination.HOME -> homeContent(
+                            {
+                                navController.navigate(AppDestination.WORKOUTS.route) {
+                                    popUpTo(AppDestination.HOME.route) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            { navController.navigate("nutrition") },
+                            { navController.navigate("checkin") },
+                            { navController.navigate("recommendations") },
+                            { navController.navigate("achievements") },
                         )
                         AppDestination.PROGRESS -> progressContent { navController.navigate("exercise_catalog") }
-                        AppDestination.SEARCH -> catalogContent(null)
-                        AppDestination.PROFILE -> profileContent(
-                            {},
-                            { navController.navigate("settings") }
+                        AppDestination.SETTINGS -> settingsContent(
+                            { navController.navigate(AppDestination.PROFILE.route) },
+                            { navController.navigate("checkin") },
+                            { navController.navigate("recommendations") },
                         )
                         else -> DestinationScreen(destination.heading)
                     }
                 }
+            }
+            composable(AppDestination.WORKOUTS.route) {
+                todayContent(
+                    { navController.navigate("exercise_catalog") },
+                    { navController.navigate("nutrition") },
+                )
+            }
+            composable(AppDestination.SEARCH.route) {
+                catalogContent { navController.popBackStack() }
+            }
+            composable(AppDestination.PROFILE.route) {
+                profileContent(
+                    { navController.popBackStack() },
+                    { navController.popBackStack(AppDestination.SETTINGS.route, inclusive = false) },
+                )
             }
             composable("exercise_catalog") {
                 catalogContent { navController.popBackStack() }
             }
             composable("nutrition") {
                 nutritionContent { navController.popBackStack() }
-            }
-            composable("settings") {
-                settingsContent(
-                    { navController.popBackStack() }, // onNavigateToProfile -> go back to profile tab
-                    { navController.navigate("checkin") },
-                    { navController.navigate("recommendations") }
-                )
             }
             composable("checkin") {
                 checkinContent(
@@ -407,6 +486,9 @@ private fun ActiveGoalNavigation(
             }
             composable("recommendations") {
                 recommendationsContent { navController.popBackStack() }
+            }
+            composable("achievements") {
+                achievementsContent { navController.popBackStack() }
             }
         }
     }

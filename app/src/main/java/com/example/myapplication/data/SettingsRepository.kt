@@ -14,6 +14,8 @@ private val ENABLED = booleanPreferencesKey("reminder_enabled")
 private val HOUR = intPreferencesKey("reminder_hour")
 private val MINUTE = intPreferencesKey("reminder_minute")
 private val REST = stringPreferencesKey("rest_day_mode")
+private val CUSTOM_SERVER_URL = stringPreferencesKey("custom_server_url")
+private val DARK_MODE_ENABLED = booleanPreferencesKey("dark_mode_enabled")
 
 val Context.dataStore by preferencesDataStore(
     name = "gym_settings",
@@ -25,6 +27,8 @@ data class Settings(
     val reminderHour: Int = 20,
     val reminderMinute: Int = 0,
     val restDayMode: RestDayMode? = null,
+    val customServerUrl: String? = null,
+    val darkModeEnabled: Boolean? = null,
 )
 
 internal fun preferencesToSettings(preferences: Preferences) = Settings(
@@ -32,6 +36,8 @@ internal fun preferencesToSettings(preferences: Preferences) = Settings(
     reminderHour = (preferences[HOUR] ?: 20).takeIf { it in 0..23 } ?: 20,
     reminderMinute = (preferences[MINUTE] ?: 0).takeIf { it in 0..59 } ?: 0,
     restDayMode = preferences[REST]?.let { stored -> RestDayMode.entries.firstOrNull { it.name == stored } },
+    customServerUrl = preferences[CUSTOM_SERVER_URL],
+    darkModeEnabled = preferences[DARK_MODE_ENABLED],
 )
 
 internal fun settingsFromPreferences(data: Flow<Preferences>): Flow<Settings> = data
@@ -43,6 +49,8 @@ interface SettingsRepository {
     suspend fun setReminderEnabled(enabled: Boolean)
     suspend fun setReminderTime(hour: Int, minute: Int)
     suspend fun setRestDayMode(mode: RestDayMode?)
+    suspend fun setCustomServerUrl(url: String?)
+    suspend fun setDarkModeEnabled(enabled: Boolean?)
 }
 
 class DataStoreSettingsRepository(context: Context) : SettingsRepository {
@@ -55,5 +63,11 @@ class DataStoreSettingsRepository(context: Context) : SettingsRepository {
     }
     override suspend fun setRestDayMode(mode: RestDayMode?) {
         store.edit { if (mode == null) it.remove(REST) else it[REST] = mode.name }
+    }
+    override suspend fun setCustomServerUrl(url: String?) {
+        store.edit { if (url == null) it.remove(CUSTOM_SERVER_URL) else it[CUSTOM_SERVER_URL] = url }
+    }
+    override suspend fun setDarkModeEnabled(enabled: Boolean?) {
+        store.edit { if (enabled == null) it.remove(DARK_MODE_ENABLED) else it[DARK_MODE_ENABLED] = enabled }
     }
 }

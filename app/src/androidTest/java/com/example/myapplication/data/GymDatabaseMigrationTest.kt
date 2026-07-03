@@ -58,6 +58,32 @@ class GymDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun migration_2_3_adds_deterministic_legacy_schedule_without_losing_goal() {
+        helper.createDatabase(TEST_DATABASE, 2).apply {
+            execSQL(
+                """
+                INSERT INTO goals (
+                    id, programId, goal, level, equipmentProfile, sessionsPerWeek,
+                    durationWeeks, restDayMode, createdEpochDay, archived
+                ) VALUES (1, 'general', 'GENERAL_FITNESS', 'BEGINNER', 'BODYWEIGHT_ONLY', 3, 4, 'FULL_REST', 20600, 0)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        helper.runMigrationsAndValidate(
+            TEST_DATABASE,
+            3,
+            true,
+            GymDatabase.MIGRATION_2_3,
+        ).use { migrated ->
+            assertEquals(1, migrated.singleInt("SELECT COUNT(*) FROM goals"))
+            assertEquals(21, migrated.singleInt("SELECT trainingDaysMask FROM goals WHERE id = 1"))
+            assertEquals(45, migrated.singleInt("SELECT sessionDurationMinutes FROM goals WHERE id = 1"))
+        }
+    }
+
     private fun SupportSQLiteDatabase.singleInt(sql: String): Int = query(sql).use { cursor ->
         check(cursor.moveToFirst())
         cursor.getInt(0)

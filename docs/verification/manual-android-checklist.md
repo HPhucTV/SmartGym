@@ -2,13 +2,25 @@
 
 Date: 2026-07-02 (Asia/Saigon)
 
+## Production-hardening smoke test (2026-07-03)
+
+- [ ] Cài `app/build/outputs/apk/debug/app-debug.apk` trên máy thật bằng ADB hoặc Android Studio.
+- [ ] Khi chưa bật AI Cloud consent, quét món ăn không gửi request và hiển thị hướng dẫn bật consent.
+- [ ] Khi chưa cấu hình server trên máy thật, core workout, dinh dưỡng thủ công và progress vẫn hoạt động offline.
+- [ ] Khi cấu hình URL hợp lệ và bật consent, AI hoạt động; khi server tắt, app fallback mà không crash.
+- [ ] Chuyển Light/Dark/System và kiểm tra Home, Today, Achievements, Progress, Settings không còn nền trắng cố định gây mất tương phản.
+- [ ] Hoàn thành buổi tập cuối: confetti chuyển động, share hiển thị đúng phần trăm và badge mới.
+- [ ] Mở lại hoặc retry session đã hoàn thành: không bắn celebration lần hai.
+- [ ] Thay goal, hoàn thành một buổi và xác nhận tiến độ huy hiệu không cộng lịch sử của goal cũ.
+- [ ] Xoay màn hình và đưa app background/foreground; state không nhân đôi request hoặc hoàn thành session.
+
 ## Test environment
 
 - Device: Android Emulator `Pixel_8` (`sdk_gphone16k_x86_64`)
 - Android API: 37
 - Physical display: 1080 x 2400, 420 dpi
 - Orientation during automated journey: portrait
-- App mode: fully offline; manifest has no `INTERNET` or `ACCESS_NETWORK_STATE` permission
+- App mode tại lần kiểm định 2026-07-02: fully offline. Bản 2026-07-03 có `INTERNET` cho AI tùy chọn, được khóa bằng consent; core vẫn offline-first.
 - Debug APK: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## Automated verification
@@ -70,4 +82,4 @@ PASS — BUILD SUCCESSFUL in 4m 1s
 
 ## Release status
 
-Automated release gates pass and the APK is produced. Manual visual/permission/time-change rows above remain `NOT RUN`; therefore this document does not claim a fully manual device-matrix sign-off.
+Automated release gates pass and the APK is produced. The full instrumentation suite passed 62/62 tests on an RMX3521 running Android 14. Manual visual/permission/time-change rows above remain `NOT RUN`; therefore this document does not claim a fully manual device-matrix sign-off.

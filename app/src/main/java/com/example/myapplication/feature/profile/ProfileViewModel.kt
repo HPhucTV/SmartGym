@@ -78,52 +78,51 @@ class ProfileViewModel(
         }
     }
 
-    val uiState: StateFlow<ProfileUiState> = combine(
+    private val bodyState = combine(
         birthDateState,
         sexState,
         heightState,
         currentWeightState,
         targetWeightState,
+        ::ProfileBodyState,
+    )
+    private val preferenceState = combine(
         activityLevelState,
         goalPaceState,
         personalizationConsentState,
         cloudAiConsentState,
+        ::ProfilePreferenceState,
+    )
+    private val saveState = combine(
         isSavingState,
         saveErrorState,
         successState,
-        validationErrorsState
-    ) { args ->
-        val birthDate = args[0] as? Long
-        val sex = args[1] as? MetabolicSex
-        val height = args[2] as String
-        val curWeight = args[3] as String
-        val tarWeight = args[4] as String
-        val activity = args[5] as? ActivityLevel
-        val pace = args[6] as? GoalPace
-        val consent = args[7] as Boolean
-        val cloudConsent = args[8] as Boolean
-        val saving = args[9] as Boolean
-        val error = args[10] as? String
-        val success = args[11] as Boolean
-        val valErrors = args[12] as List<String>
+        validationErrorsState,
+        ::ProfileSaveState,
+    )
 
-        if (birthDate == null || sex == null || activity == null || pace == null) {
+    val uiState: StateFlow<ProfileUiState> = combine(
+        bodyState,
+        preferenceState,
+        saveState,
+    ) { body, preferences, save ->
+        if (body.birthDate == null || body.sex == null || preferences.activity == null || preferences.pace == null) {
             ProfileUiState.Loading
         } else {
             ProfileUiState.Content(
-                birthDateEpochDay = birthDate,
-                metabolicSex = sex,
-                heightCmStr = height,
-                currentWeightKgStr = curWeight,
-                targetWeightKgStr = tarWeight,
-                activityLevel = activity,
-                goalPace = pace,
-                personalizationConsent = consent,
-                cloudAiConsent = cloudConsent,
-                isSaving = saving,
-                saveError = error,
-                success = success,
-                validationErrors = valErrors
+                birthDateEpochDay = body.birthDate,
+                metabolicSex = body.sex,
+                heightCmStr = body.height,
+                currentWeightKgStr = body.currentWeight,
+                targetWeightKgStr = body.targetWeight,
+                activityLevel = preferences.activity,
+                goalPace = preferences.pace,
+                personalizationConsent = preferences.personalizationConsent,
+                cloudAiConsent = preferences.cloudAiConsent,
+                isSaving = save.isSaving,
+                saveError = save.error,
+                success = save.success,
+                validationErrors = save.validationErrors,
             )
         }
     }.stateIn(
@@ -275,3 +274,25 @@ class ProfileViewModel(
         return cleaned.toDoubleOrNull()
     }
 }
+
+private data class ProfileBodyState(
+    val birthDate: Long?,
+    val sex: MetabolicSex?,
+    val height: String,
+    val currentWeight: String,
+    val targetWeight: String,
+)
+
+private data class ProfilePreferenceState(
+    val activity: ActivityLevel?,
+    val pace: GoalPace?,
+    val personalizationConsent: Boolean,
+    val cloudAiConsent: Boolean,
+)
+
+private data class ProfileSaveState(
+    val isSaving: Boolean,
+    val error: String?,
+    val success: Boolean,
+    val validationErrors: List<String>,
+)

@@ -10,17 +10,31 @@ import org.junit.Assert.assertSame
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.DayOfWeek
 
 @RunWith(AndroidJUnit4::class)
 class OnboardingScreenTest {
     @get:Rule val composeRule = createComposeRule()
 
+    @Test fun scheduleStepExplainsProgressDaysAndTime() {
+        setContent(
+            editing(
+                OnboardingStep.TRAINING_DAYS,
+                OnboardingDraft(trainingDays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY)),
+            ),
+        )
+        composeRule.onNodeWithText("Bước 4/7").assertIsDisplayed()
+        composeRule.onNodeWithText("Chọn ngày bạn thực sự có thể duy trì.").assertIsDisplayed()
+        composeRule.onNodeWithText("Thứ Hai").assertIsSelected()
+        composeRule.onNodeWithText("Thứ Tư").assertIsSelected()
+    }
+
     @Test fun goalStep_selectsOneDecisionAndAdvances() {
         var selected: FitnessGoal? = null
         var nextCalls = 0
         setContent(editing(OnboardingStep.GOAL, OnboardingDraft(goal = FitnessGoal.MUSCLE_GAIN)), onGoal = { goal -> selected = goal }, onNext = { nextCalls++ })
-        composeRule.onNodeWithText("Tăng cơ").assertIsSelected().performClick()
-        composeRule.onNodeWithText("Thể lực tổng quát").assertIsNotSelected()
+        composeRule.onNodeWithTag("onboarding-goal-MUSCLE_GAIN").assertIsSelected().performClick()
+        composeRule.onNodeWithTag("onboarding-goal-GENERAL_FITNESS").assertIsNotSelected()
         composeRule.runOnIdle { assertSame(FitnessGoal.MUSCLE_GAIN, selected) }
         composeRule.onNodeWithText("Tiếp tục").performClick()
         composeRule.runOnIdle { assertEquals(1, nextCalls) }
@@ -28,11 +42,20 @@ class OnboardingScreenTest {
     }
 
     @Test fun reviewShowsExactSelectionsAndSavingDisablesCreate() {
-        val draft = OnboardingDraft(FitnessGoal.GENERAL_FITNESS, ExperienceLevel.BEGINNER,
-            EquipmentProfile.BODYWEIGHT_ONLY, 3, 4, RestDayMode.LIGHT_RECOVERY)
+        val draft = OnboardingDraft(
+            goal = FitnessGoal.GENERAL_FITNESS,
+            level = ExperienceLevel.BEGINNER,
+            equipment = EquipmentProfile.BODYWEIGHT_ONLY,
+            sessionsPerWeek = 3,
+            durationWeeks = 4,
+            restDayMode = RestDayMode.LIGHT_RECOVERY,
+            trainingDays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY),
+            sessionDurationMinutes = 45,
+        )
         setContent(editing(OnboardingStep.REVIEW, draft, isSaving = true))
         composeRule.onNodeWithText("Thể lực tổng quát").assertIsDisplayed()
-        composeRule.onNodeWithText("3 buổi/tuần · 4 tuần").assertIsDisplayed()
+        composeRule.onNodeWithText("3 buổi/tuần").assertIsDisplayed()
+        composeRule.onNodeWithText("Tối đa 45 phút").assertIsDisplayed()
         composeRule.onNodeWithText("Phục hồi nhẹ").assertIsDisplayed()
         composeRule.onNodeWithText("Đang tạo…").assertIsNotEnabled()
         composeRule.onNodeWithText("Quay lại").assertIsNotEnabled()
@@ -52,7 +75,7 @@ class OnboardingScreenTest {
     @Test fun replacementModeHasDistinctHeadingAndExplanation() {
         setContent(editing(OnboardingStep.GOAL), replacementMode = true)
         composeRule.onNodeWithText("Đổi mục tiêu").assertIsDisplayed()
-        composeRule.onNodeWithText("Lịch sử tập luyện đã hoàn thành vẫn được giữ lại.").assertIsDisplayed()
+        composeRule.onNodeWithText("Lịch sử hoàn thành vẫn được giữ lại.").assertIsDisplayed()
         composeRule.onAllNodesWithText("Tạo mục tiêu").assertCountEquals(0)
     }
     @Test fun forbiddenAccountAndBodyFieldsAreAbsent() {

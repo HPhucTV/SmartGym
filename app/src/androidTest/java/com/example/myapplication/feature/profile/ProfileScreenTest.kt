@@ -55,8 +55,9 @@ class ProfileScreenTest {
         rule.onNodeWithText("HỒ SƠ CÁ NHÂN").assertIsDisplayed()
         rule.onNodeWithText("Chiều cao").assertIsDisplayed()
         rule.onNodeWithText("Cân nặng").assertIsDisplayed()
-        rule.onNodeWithText("Độ tuổi phải từ 18 đến 100.").assertIsDisplayed()
-        rule.onNodeWithTag("profile-save-button").assertIsDisplayed()
+        rule.onNodeWithTag("profile-validation-errors").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Độ tuổi phải từ 18 đến 100.", substring = true).assertIsDisplayed()
+        rule.onNodeWithTag("profile-save-button").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -93,7 +94,7 @@ class ProfileScreenTest {
             }
         }
 
-        rule.onNodeWithTag("profile-save-button").performClick()
+        rule.onNodeWithTag("profile-save-button").performScrollTo().performClick()
         rule.runOnIdle {
             assertTrue(saved)
         }

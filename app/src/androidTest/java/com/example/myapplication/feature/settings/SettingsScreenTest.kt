@@ -30,22 +30,29 @@ class SettingsScreenTest {
         rule.setContent {
             GymAppTheme {
                 SettingsScreen(
-                    state.value, {}, {}, { _, _ -> },
-                    { state.value = state.value.copy(confirmation = PendingConfirmation.REPLACE) },
-                    { state.value = state.value.copy(confirmation = PendingConfirmation.DELETE) },
-                    { state.value = state.value.copy(confirmation = PendingConfirmation.NONE) },
-                    {
+                    state = state.value,
+                    onRest = {},
+                    onReminder = {},
+                    onTime = { _, _ -> },
+                    onServerUrlChanged = {},
+                    onDarkModeChanged = {},
+                    onRequestReplace = { state.value = state.value.copy(confirmation = PendingConfirmation.REPLACE) },
+                    onRequestDelete = { state.value = state.value.copy(confirmation = PendingConfirmation.DELETE) },
+                    onCancel = { state.value = state.value.copy(confirmation = PendingConfirmation.NONE) },
+                    onConfirm = {
                         if (state.value.confirmation == PendingConfirmation.DELETE) delete++ else replace++
                         state.value = state.value.copy(confirmation = PendingConfirmation.NONE)
                     },
-                    {}, {}, {}
+                    onNavigateToProfile = {},
+                    onNavigateToCheckIn = {},
+                    onNavigateToRecommendations = {},
                 )
             }
         }
-        rule.onNodeWithText("Đổi mục tiêu").performClick()
+        rule.onNodeWithText("Đổi mục tiêu").performScrollTo().performClick()
         rule.onNodeWithText("Lịch sử buổi tập đã hoàn thành vẫn được giữ lại.").assertIsDisplayed()
         rule.onNodeWithText("Hủy").performClick()
-        rule.onNodeWithText("Xóa mục tiêu hiện tại").performClick()
+        rule.onNodeWithText("Xóa mục tiêu hiện tại").performScrollTo().performClick()
         rule.onNodeWithText("Xóa mục tiêu").assertExists()
         rule.onNodeWithText("Xác nhận").performClick()
         rule.runOnIdle { assertEquals(0, replace); assertEquals(1, delete) }
@@ -63,6 +70,22 @@ class SettingsScreenTest {
         RestDayMode.LIGHT_RECOVERY, false, 20, 0)
     private fun set(state: SettingsUiState.Content, onRest: (RestDayMode) -> Unit = {}, onReminder: (Boolean) -> Unit = {},
         onReplace: () -> Unit = {}, onDelete: () -> Unit = {}) = rule.setContent {
-        GymAppTheme { SettingsScreen(state, onRest, onReminder, { _, _ -> }, onReplace, onDelete, {}, {}, {}, {}, {}) }
+        GymAppTheme {
+            SettingsScreen(
+                state = state,
+                onRest = onRest,
+                onReminder = onReminder,
+                onTime = { _, _ -> },
+                onServerUrlChanged = {},
+                onDarkModeChanged = {},
+                onRequestReplace = onReplace,
+                onRequestDelete = onDelete,
+                onCancel = {},
+                onConfirm = {},
+                onNavigateToProfile = {},
+                onNavigateToCheckIn = {},
+                onNavigateToRecommendations = {},
+            )
+        }
     }
 }

@@ -228,6 +228,7 @@ class RecommendationViewModelTest {
         override suspend fun nutritionRangeNow(startEpochDay: Long, endEpochDay: Long): List<com.example.myapplication.data.local.DailyNutritionEntity> = emptyList()
         override suspend fun upsertWeeklyCheckIn(checkIn: com.example.myapplication.data.local.WeeklyCheckInEntity) = Unit
         override fun observeLatestCheckIn(): Flow<com.example.myapplication.data.local.WeeklyCheckInEntity?> = flowOf(null)
+        override fun observeAllCheckIns(): Flow<List<com.example.myapplication.data.local.WeeklyCheckInEntity>> = flowOf(emptyList())
         override suspend fun latestCheckInNow(): com.example.myapplication.data.local.WeeklyCheckInEntity? = null
         override suspend fun insertDecision(decision: AdaptationDecisionEntity): Long = 0
         override suspend fun updateDecisionStatus(id: Long, status: AdaptationStatus, resolvedAt: Long) = Unit

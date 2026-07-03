@@ -37,12 +37,12 @@ class ProgramSelectorTest {
     }
 
     @Test
-    fun catalogWithoutExactMatchReturnsUnsupported() {
+    fun reviewedBaseProgramCanAdaptToDifferentWeeklyFrequency() {
         val differentProgram = program("different").copy(sessionsPerWeek = 4)
 
         val result = ProgramSelector.select(config, listOf(differentProgram))
 
-        assertEquals(ProgramSelectionResult.Unsupported, result)
+        assertEquals(ProgramSelectionResult.Found(differentProgram), result)
     }
 
     @Test

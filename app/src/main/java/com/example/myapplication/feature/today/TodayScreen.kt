@@ -38,12 +38,17 @@ fun TodayScreen(
     onNavigateToCatalog: () -> Unit = {},
     onNavigateToNutrition: () -> Unit = {},
     onRefreshCoachTip: () -> Unit = {},
+    celebrationState: CelebrationState = CelebrationState(),
+    onDismissCelebration: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
 
     Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
         when (state) {
-            TodayUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            TodayUiState.Loading -> Box(
+                Modifier.fillMaxSize().testTag("today-loading"),
+                contentAlignment = Alignment.Center,
+            ) {
                 CircularProgressIndicator(color = EnergyOrange, modifier = Modifier.semantics { contentDescription = "Đang tải bài tập" })
             }
             TodayUiState.GoalComplete -> GoalCompleteScreen()
@@ -58,7 +63,179 @@ fun TodayScreen(
                 onRefreshCoachTip = onRefreshCoachTip
             )
         }
+
+        // Celebration Layer
+        if (celebrationState.showConfetti) {
+            com.example.myapplication.core.ui.ConfettiCelebration(
+                isActive = true,
+                onFinished = {
+                    if (celebrationState.unlockedAchievements.isEmpty()) {
+                        onDismissCelebration()
+                    }
+                }
+            )
+
+            // Simple celebratory banner at top if no achievements, or full dialog if achievements are unlocked
+            if (celebrationState.unlockedAchievements.isEmpty()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 40.dp, start = 20.dp, end = 20.dp),
+                    color = SuccessGreen,
+                    shape = RoundedCornerShape(16.dp),
+                    shadowElevation = 4.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "Tuyệt vời! Bạn đã hoàn thành buổi tập hôm nay! 💪🎉",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            OutlinedButton(
+                                onClick = {
+                                    shareWorkoutSummary(
+                                        context = context,
+                                        workoutTitle = celebrationState.workoutTitle,
+                                        completed = celebrationState.completedExercises,
+                                        total = celebrationState.totalExercises,
+                                        achievements = emptyList()
+                                    )
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                            ) {
+                                Text("Chia sẻ 🔗", fontWeight = FontWeight.Bold)
+                            }
+                            Button(
+                                onClick = onDismissCelebration,
+                                modifier = Modifier.testTag("celebration-dismiss"),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = SuccessGreen)
+                            ) {
+                                Text("Đóng", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Achievement unlock dialog
+                AchievementUnlockDialog(
+                    badges = celebrationState.unlockedAchievements,
+                    workoutTitle = celebrationState.workoutTitle,
+                    completedExercises = celebrationState.completedExercises,
+                    totalExercises = celebrationState.totalExercises,
+                    onDismiss = onDismissCelebration
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun AchievementUnlockDialog(
+    badges: List<com.example.myapplication.core.achievement.AchievementType>,
+    workoutTitle: String,
+    completedExercises: Int,
+    totalExercises: Int,
+    onDismiss: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        shareWorkoutSummary(
+                            context = context,
+                            workoutTitle = workoutTitle,
+                            completed = completedExercises,
+                            total = totalExercises,
+                            achievements = badges
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, EnergyOrange),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = EnergyOrange)
+                ) {
+                    Text("Chia sẻ 🔗", fontWeight = FontWeight.Bold)
+                }
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.testTag("celebration-dismiss"),
+                    colors = ButtonDefaults.buttonColors(containerColor = EnergyOrange),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Đóng 🌟", fontWeight = FontWeight.Bold)
+                }
+            }
+        },
+        title = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("🏆 THÀNH TỰU MỚI!", color = EnergyOrange, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Chúc mừng bạn đã mở khóa huy hiệu mới!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.customColors.mutedText,
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                badges.forEach { badge ->
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(badge.icon, fontSize = 42.sp)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    badge.titleVi,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.customColors.primaryText,
+                                    fontSize = 16.sp
+                                )
+                                Text(
+                                    badge.descriptionVi,
+                                    color = MaterialTheme.colorScheme.customColors.mutedText,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
 }
 
 // ── Hero Header Card ──────────────────────────────────────────────
@@ -363,7 +540,7 @@ private fun GoalCompleteScreen() {
     val customColors = colors.customColors
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(32.dp).testTag("today-goal-complete"),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -411,7 +588,7 @@ private fun ErrorScreen(state: TodayUiState.Error, onRetry: () -> Unit) {
     val customColors = colors.customColors
 
     Column(
-        Modifier.fillMaxSize().padding(32.dp),
+        Modifier.fillMaxSize().padding(32.dp).testTag("today-error"),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -501,4 +678,22 @@ private fun AICoachTipCard(
             )
         }
     }
+}
+
+private fun shareWorkoutSummary(
+    context: android.content.Context,
+    workoutTitle: String,
+    completed: Int,
+    total: Int,
+    achievements: List<com.example.myapplication.core.achievement.AchievementType>
+) {
+    val shareText = buildWorkoutShareText(workoutTitle, completed, total, achievements)
+
+    val sendIntent = android.content.Intent().apply {
+        action = android.content.Intent.ACTION_SEND
+        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+        type = "text/plain"
+    }
+    val shareIntent = android.content.Intent.createChooser(sendIntent, "Chia sẻ kết quả tập")
+    context.startActivity(shareIntent)
 }

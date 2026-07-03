@@ -1,6 +1,9 @@
 package com.example.myapplication.app
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -25,6 +28,41 @@ class GymAppNavigationTest {
     val composeRule = createComposeRule()
 
     @Test
+    fun homeActions_navigateToWorkoutNutritionCheckInAndRecommendations() {
+        composeRule.setContent {
+            GymAppTheme {
+                GymApp(
+                    rootState = GymRootState.ActiveGoal,
+                    homeContent = { workouts, nutrition, checkIn, recommendations, _ ->
+                        Column {
+                            Button(onClick = workouts) { Text("Home workout") }
+                            Button(onClick = nutrition) { Text("Home nutrition") }
+                            Button(onClick = checkIn) { Text("Home check-in") }
+                            Button(onClick = recommendations) { Text("Home recommendations") }
+                        }
+                    },
+                    todayContent = { _, _ -> Text("Workout destination") },
+                    nutritionContent = { Text("Nutrition destination") },
+                    checkinContent = { _, _ -> Text("Check-in destination") },
+                    recommendationsContent = { Text("Recommendations destination") },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Home workout").performClick()
+        composeRule.onNodeWithText("Workout destination").assertIsDisplayed()
+        composeRule.onNodeWithText("Hôm nay").performClick()
+        composeRule.onNodeWithText("Home nutrition").performClick()
+        composeRule.onNodeWithText("Nutrition destination").assertIsDisplayed()
+        composeRule.onNodeWithText("Hôm nay").performClick()
+        composeRule.onNodeWithText("Home check-in").performClick()
+        composeRule.onNodeWithText("Check-in destination").assertIsDisplayed()
+        composeRule.onNodeWithText("Hôm nay").performClick()
+        composeRule.onNodeWithText("Home recommendations").performClick()
+        composeRule.onNodeWithText("Recommendations destination").assertIsDisplayed()
+    }
+
+    @Test
     fun rootStateTransitions_replaceLoadingOnboardingAndNavigationWithoutStaleUi() {
         val rootState = mutableStateOf<GymRootState>(GymRootState.Loading)
         composeRule.setContent {
@@ -39,7 +77,7 @@ class GymAppNavigationTest {
         composeRule.onAllNodesWithText("Hôm nay").assertCountEquals(0)
 
         composeRule.runOnIdle { rootState.value = GymRootState.ActiveGoal }
-        composeRule.onNodeWithText("Bài tập hôm nay").assertIsDisplayed()
+        composeRule.onNodeWithText("SmartGym Dashboard").assertIsDisplayed()
         composeRule.onNodeWithText("Hôm nay").assertIsDisplayed()
         composeRule.onNodeWithText("Tiến độ").assertIsDisplayed()
         composeRule.onNodeWithText("Cài đặt").assertIsDisplayed()
@@ -56,14 +94,14 @@ class GymAppNavigationTest {
             GymAppTheme { GymApp(rootState = GymRootState.ActiveGoal) }
         }
 
-        composeRule.onNodeWithText("Bài tập hôm nay").assertIsDisplayed()
+        composeRule.onNodeWithText("SmartGym Dashboard").assertIsDisplayed()
         composeRule.onNodeWithText("Hôm nay").assertIsDisplayed()
         composeRule.onNodeWithText("Tiến độ").assertIsDisplayed().performClick()
         composeRule.onNodeWithText("Tiến độ tập luyện").assertIsDisplayed()
         composeRule.onNodeWithText("Cài đặt").assertIsDisplayed().performClick()
         composeRule.onNodeWithText("Cài đặt ứng dụng").assertIsDisplayed()
         composeRule.onNodeWithText("Hôm nay").performClick()
-        composeRule.onNodeWithText("Bài tập hôm nay").assertIsDisplayed()
+        composeRule.onNodeWithText("SmartGym Dashboard").assertIsDisplayed()
     }
 
     @Test
@@ -105,12 +143,12 @@ class GymAppNavigationTest {
         }
 
         composeRule.onNodeWithText("Đổi mục tiêu").assertIsDisplayed()
-        composeRule.onNodeWithText("Lịch sử tập luyện đã hoàn thành vẫn được giữ lại.").assertIsDisplayed()
+        composeRule.onNodeWithText("Lịch sử hoàn thành vẫn được giữ lại.").assertIsDisplayed()
         composeRule.onAllNodesWithText("Tạo mục tiêu").assertCountEquals(0)
 
         composeRule.runOnIdle { replacementMode.value = false }
         composeRule.onNodeWithText("Tạo mục tiêu").assertIsDisplayed()
-        composeRule.onNodeWithText("Chọn chương trình có sẵn để nhận bài tập mỗi ngày.").assertIsDisplayed()
+        composeRule.onNodeWithText("Mục tiêu quyết định trọng tâm của chương trình.").assertIsDisplayed()
         composeRule.onAllNodesWithText("Đổi mục tiêu").assertCountEquals(0)
     }
 }

@@ -28,7 +28,9 @@ class OkHttpCoachExplanationClient(
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
         .build(),
-    private val endpointUrl: String = "http://10.0.2.2:3000/api/explain-decision",
+    private val endpointProvider: () -> String? = {
+        com.example.myapplication.app.BackendConfig.baseUrl?.let { "$it/api/explain-decision" }
+    },
 ) : CoachExplanationClient {
     override suspend fun explainDecision(
         kind: AdaptationKind,
@@ -36,6 +38,7 @@ class OkHttpCoachExplanationClient(
         beforeValue: String,
         afterValue: String,
     ): String? = withContext(Dispatchers.IO) {
+        val endpointUrl = endpointProvider() ?: return@withContext null
         val payload = buildJsonObject {
             put("kind", kind.name)
             put("reasonVi", reasonVi)

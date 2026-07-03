@@ -101,7 +101,7 @@ class RoomWorkoutStaleMutationTest {
         assertEquals(CompleteWorkoutResult.AlreadyCompleted, repository.completeWorkout(later.id, 105))
 
         assertEquals(sessions.first().id, repository.observeCurrentWorkout().first()?.id)
-        assertEquals(listOf(100L, 102L), database.workoutDao().getSessionsForGoal(goal.id).map { it.dueEpochDay })
+        assertEquals(listOf(102L, 105L), database.workoutDao().getSessionsForGoal(goal.id).map { it.dueEpochDay })
         assertTrue(repository.observeCompletedWorkouts().first().isEmpty())
     }
 

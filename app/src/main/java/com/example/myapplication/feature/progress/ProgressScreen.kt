@@ -21,8 +21,8 @@ fun ProgressScreen(
     state: ProgressUiState,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
-    onNavigateToCatalog: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onNavigateToCatalog: () -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
 
@@ -72,6 +72,8 @@ private fun ProgressContent(
             muscleStats = state.muscleStats
         )
 
+        ContributionGraphCard(markedEpochDays = state.markedEpochDays)
+
         CalendarCard(
             state.selectedMonth, state.markedEpochDays, state.completedInMonth,
             state.canNavigatePrevious, state.canNavigateNext, previous, next
@@ -120,6 +122,8 @@ private fun ProgressWithoutGoal(
                 muscleStats = emptyList()
             )
         }
+
+        ContributionGraphCard(markedEpochDays = state.markedEpochDays)
 
         CalendarCard(
             state.selectedMonth, state.markedEpochDays, state.completedInMonth,

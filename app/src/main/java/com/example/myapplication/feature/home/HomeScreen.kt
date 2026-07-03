@@ -2,332 +2,378 @@ package com.example.myapplication.feature.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.style.TextAlign
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-// Colors matching the dark premium mockup
-private val DarkBg = Color(0xFF070B19)
-private val CardBg = Color(0xFF0F172A)
-private val NeonGreen = Color(0xFF22C55E)
-private val MutedText = Color(0xFF94A3B8)
+internal object HomePalette {
+    val background = Color(0xFFFFFFFF)
+    val navy = Color(0xFF14213D)
+    val orange = Color(0xFFF97316)
+    val green = Color(0xFF22C55E)
+    val supportingSurface = Color(0xFFF3F4F6)
+    val border = Color(0xFFE5E7EB)
+    val mutedText = Color(0xFF64748B)
+}
 
 @Composable
 fun HomeScreen(
     state: HomeUiState,
     onNavigateToWorkouts: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToNutrition: () -> Unit = {},
+    onNavigateToCheckIn: () -> Unit = {},
+    onNavigateToRecommendations: () -> Unit = {},
+    onNavigateToAchievements: () -> Unit = {},
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBg)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        // App title header
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .background(Color(0xFF3B82F6), shape = RoundedCornerShape(6.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("S", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            }
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = "SmartGym",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+        HomeHeader(epochDay = state.epochDay)
+
+        // Daily Motivation Quote
+        if (state.dailyQuote.isNotEmpty()) {
+            MotivationCard(quote = state.dailyQuote)
         }
 
-        // Layout with two main side-by-side components or stacked row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Today's Workout Summary Card
-                WorkoutSummaryCard(
-                    minutes = state.durationMinutes,
-                    type = state.workoutType,
-                    sets = state.completedSets,
-                    total = state.totalSets,
-                    onClick = onNavigateToWorkouts
-                )
+        WorkoutHero(state = state, onClick = onNavigateToWorkouts)
+        StatusRow(state = state)
 
-                // Weekly Progress Card
-                WeeklyProgressCard(
-                    weeklyProgress = state.weeklyProgress
-                )
-            }
-
-            Column(
-                modifier = Modifier.width(130.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Calories Burned Circular Progress (Workout active burn)
-                CaloriesCircle(
-                    title = "Đốt cháy",
-                    current = state.caloriesBurned,
-                    target = state.caloriesBurnedTarget,
-                    glowColor = Color(0xFFF97316) // orange
-                )
-
-                // Calories Consumed Circular Progress (Nutrition food logged today)
-                CaloriesCircle(
-                    title = "Hấp thụ",
-                    current = state.caloriesConsumed,
-                    target = state.caloriesTarget,
-                    glowColor = NeonGreen // green
-                )
-
-                // 14-day Streak Badge
-                StreakBadge(
-                    days = state.streakDays
-                )
-            }
-        }
+        Text(
+            text = "TIẾP THEO CHO BẠN",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp,
+        )
+        DashboardActionCard(
+            tag = "home-nutrition-action",
+            eyebrow = "DINH DƯỠNG HÔM NAY",
+            title = nutritionTitle(state),
+            supporting = nutritionSupporting(state),
+            accent = HomePalette.green,
+            onClick = onNavigateToNutrition,
+        )
+        DashboardActionCard(
+            tag = "home-checkin-action",
+            eyebrow = "PHẢN HỒI HẰNG TUẦN",
+            title = "Check-in cơ thể",
+            supporting = "Ghi cân nặng, năng lượng và khả năng phục hồi",
+            accent = HomePalette.navy,
+            onClick = onNavigateToCheckIn,
+        )
+        DashboardActionCard(
+            tag = "home-recommendations-action",
+            eyebrow = "CÁ NHÂN HÓA",
+            title = "Đề xuất dành cho bạn",
+            supporting = "Xem điều chỉnh dựa trên lịch sử và check-in gần nhất",
+            accent = HomePalette.orange,
+            onClick = onNavigateToRecommendations,
+        )
+        DashboardActionCard(
+            tag = "home-achievements-action",
+            eyebrow = "THÀNH TỰU",
+            title = "Huy hiệu của bạn 🏆",
+            supporting = "Xem các thành tựu đã mở khóa và thử thách mới",
+            accent = Color(0xFFEAB308),
+            onClick = onNavigateToAchievements,
+        )
+        Spacer(Modifier.height(4.dp))
     }
 }
 
 @Composable
-private fun WorkoutSummaryCard(
-    minutes: Int,
-    type: String,
-    sets: Int,
-    total: Int,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(CardBg, shape = RoundedCornerShape(16.dp))
-            .border(1.dp, Color(0x333B82F6), shape = RoundedCornerShape(16.dp))
-            .clickable { onClick() }
+private fun HomeHeader(epochDay: Long) {
+    val date = LocalDate.ofEpochDay(epochDay)
+    val vietnamese = Locale.forLanguageTag("vi-VN")
+    val formatter = DateTimeFormatter.ofPattern("EEEE, d 'tháng' M", vietnamese)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Left accent neon border
         Box(
             modifier = Modifier
-                .align(Alignment.CenterStart)
-                .width(4.dp)
-                .height(40.dp)
-                .background(NeonGreen, shape = RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
-        )
-
-        Column(
-            modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp)
+                .size(42.dp)
+                .background(HomePalette.navy, CircleShape),
+            contentAlignment = Alignment.Center,
         ) {
+            Text("S", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
             Text(
-                text = "Tóm tắt buổi tập hôm nay",
+                text = "SMARTGYM",
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                text = formatter.format(date).replaceFirstChar { it.uppercase(vietnamese) },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "$minutes phút",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "· $type · $sets/$total bài đã xong",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MutedText
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CaloriesCircle(
-    title: String,
-    current: Int,
-    target: Int,
-    glowColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .size(130.dp)
-            .background(CardBg, shape = CircleShape)
-            .border(1.dp, Color(0x11FFFFFF), shape = CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        val progress = if (target > 0) (current.toFloat() / target).coerceIn(0f, 1f) else 0f
-        
-        // Custom neon-glowing circular progress using canvas
-        Canvas(modifier = Modifier.size(112.dp)) {
-            val strokeWidth = 8.dp.toPx()
-
-            // Background track
-            drawCircle(
-                color = Color(0xFF1E293B),
-                style = Stroke(width = strokeWidth)
-            )
-
-            // Neon glow outer blur
-            drawArc(
-                color = glowColor.copy(alpha = 0.15f),
-                startAngle = -90f,
-                sweepAngle = 360f * progress,
-                useCenter = false,
-                style = Stroke(width = strokeWidth + 4.dp.toPx(), cap = StrokeCap.Round)
-            )
-
-            // Main glowing arc
-            drawArc(
-                color = glowColor,
-                startAngle = -90f,
-                sweepAngle = 360f * progress,
-                useCenter = false,
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-            )
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelSmall,
-                color = MutedText,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "$current",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Text(
-                text = "/ $target kcal",
-                fontSize = 9.sp,
-                color = MutedText
             )
         }
     }
 }
 
 @Composable
-private fun WeeklyProgressCard(
-    weeklyProgress: List<Int>
-) {
-    val labels = listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
-    val maxVal = weeklyProgress.maxOrNull()?.coerceAtLeast(1) ?: 60
+private fun WorkoutHero(state: HomeUiState, onClick: () -> Unit) {
+    val hasWorkout = state.workoutTitle != null
+    val progress = if (state.totalExercises > 0) {
+        state.completedExercises.toFloat() / state.totalExercises
+    } else {
+        0f
+    }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(CardBg, shape = RoundedCornerShape(16.dp))
-            .border(1.dp, Color(0x11FFFFFF), shape = RoundedCornerShape(16.dp))
-            .padding(16.dp)
+            .background(HomePalette.navy, RoundedCornerShape(20.dp))
+            .border(1.dp, HomePalette.navy, RoundedCornerShape(20.dp))
+            .padding(20.dp),
     ) {
         Text(
-            text = "Tiến độ tuần này",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White
+            text = "BUỔI TẬP HÔM NAY",
+            color = HomePalette.orange,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            letterSpacing = 1.1.sp,
         )
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth().height(100.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            weeklyProgress.forEachIndexed { index, minutes ->
-                val ratio = (minutes.toFloat() / maxVal).coerceIn(0.1f, 1f)
-                val isHighlighted = index in listOf(3, 4) // Highlight T5 and T6 (Thu & Fri) like mockup
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Bottom,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(14.dp)
-                            .fillMaxHeight(ratio)
-                            .background(
-                                color = if (isHighlighted) NeonGreen else Color(0xFF3B82F6),
-                                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
-                            )
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = labels[index],
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = if (isHighlighted) NeonGreen else MutedText
-                    )
-                }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = state.workoutTitle ?: "Chưa có buổi tập hiện tại",
+            color = Color.White,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black,
+        )
+        if (hasWorkout) {
+            Text(
+                text = listOfNotNull(state.workoutFocus, state.durationMinutes?.let { "$it phút" }).joinToString("  •  "),
+                color = Color(0xFFCBD5E1),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Tiến độ bài tập", color = Color(0xFFCBD5E1), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "${state.completedExercises}/${state.totalExercises}",
+                    color = HomePalette.green,
+                    fontWeight = FontWeight.Bold,
+                )
             }
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().height(7.dp),
+                color = HomePalette.green,
+                trackColor = Color(0xFF243047),
+            )
+        } else {
+            Text(
+                text = "Kế hoạch sẽ xuất hiện khi có buổi tập đang hoạt động.",
+                color = Color(0xFFCBD5E1),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        Spacer(Modifier.height(18.dp))
+        Button(
+            onClick = onClick,
+            enabled = hasWorkout,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
+                .testTag("home-workout-action"),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = HomePalette.orange,
+                contentColor = Color.White,
+                disabledContainerColor = Color(0xFF334155),
+                disabledContentColor = Color(0xFFCBD5E1),
+            ),
+        ) {
+            Text(
+                text = if (state.completedExercises > 0) "TIẾP TỤC BUỔI TẬP" else "BẮT ĐẦU BUỔI TẬP",
+                fontWeight = FontWeight.Black,
+            )
         }
     }
 }
 
 @Composable
-private fun StreakBadge(
-    days: Int
-) {
+private fun StatusRow(state: HomeUiState) {
     Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        StatusMetric(
+            value = state.completedThisWeek.toString(),
+            label = "Buổi tuần này",
+            accent = HomePalette.navy,
+            modifier = Modifier.weight(1f),
+        )
+        StatusMetric(
+            value = state.streakDays.toString(),
+            label = "Ngày liên tiếp",
+            accent = HomePalette.green,
+            modifier = Modifier.weight(1f),
+        )
+        StatusMetric(
+            value = state.caloriesTarget?.let { "${((state.caloriesConsumed * 100L) / it.coerceAtLeast(1)).coerceAtMost(999)}%" } ?: "—",
+            label = "Dinh dưỡng",
+            accent = HomePalette.orange,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun StatusMetric(value: String, label: String, accent: Color, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .heightIn(min = 94.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(14.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
+            .padding(horizontal = 10.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(value, color = accent, fontSize = 24.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 2,
+        )
+    }
+}
+
+@Composable
+private fun DashboardActionCard(
+    tag: String,
+    eyebrow: String,
+    title: String,
+    supporting: String,
+    accent: Color,
+    onClick: () -> Unit,
+) {
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .background(CardBg, shape = RoundedCornerShape(12.dp))
-            .border(1.dp, Color(0x333B82F6), shape = RoundedCornerShape(12.dp))
-            .padding(vertical = 12.dp, horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+            .heightIn(min = 96.dp)
+            .testTag(tag)
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
-        Text(
-            text = "🔥",
-            fontSize = 16.sp
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = "Chuỗi $days ngày",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 12.sp
-        )
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(accent, CircleShape),
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(eyebrow, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(supporting, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+            Text("›", color = accent, fontSize = 28.sp, fontWeight = FontWeight.Light)
+        }
+    }
+}
+
+private fun nutritionTitle(state: HomeUiState): String = state.caloriesTarget?.let {
+    "${state.caloriesConsumed} / $it kcal"
+} ?: "${state.caloriesConsumed} kcal đã ghi"
+
+private fun nutritionSupporting(state: HomeUiState): String = if (state.caloriesTarget == null) {
+    "Chưa có mục tiêu calories — hoàn thiện hồ sơ để cá nhân hóa"
+} else {
+    "Mở nhật ký để cập nhật bữa ăn hôm nay"
+}
+
+@Composable
+private fun MotivationCard(quote: String) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("✨", fontSize = 18.sp, modifier = Modifier.padding(end = 6.dp))
+                Text(
+                    text = "ĐỘNG LỰC HẰNG NGÀY",
+                    color = HomePalette.orange,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Text("✨", fontSize = 18.sp, modifier = Modifier.padding(start = 6.dp))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "“$quote”",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 20.sp
+            )
+        }
     }
 }

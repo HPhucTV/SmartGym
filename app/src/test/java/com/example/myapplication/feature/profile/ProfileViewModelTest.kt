@@ -236,6 +236,7 @@ private class FakePersonalizationDao : PersonalizationDao {
         checkIns.add(checkIn)
     }
     override fun observeLatestCheckIn(): Flow<WeeklyCheckInEntity?> = flowOf(checkIns.lastOrNull())
+    override fun observeAllCheckIns(): Flow<List<WeeklyCheckInEntity>> = flowOf(checkIns)
     override suspend fun latestCheckInNow(): WeeklyCheckInEntity? = checkIns.lastOrNull()
 
     override suspend fun insertDecision(decision: AdaptationDecisionEntity): Long = 0

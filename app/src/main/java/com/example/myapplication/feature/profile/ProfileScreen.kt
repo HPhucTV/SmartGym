@@ -506,7 +506,9 @@ private fun ProfileContent(
             Surface(
                 color = colors.errorContainer,
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("profile-validation-errors")
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(

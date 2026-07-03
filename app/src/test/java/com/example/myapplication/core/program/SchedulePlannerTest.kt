@@ -1,10 +1,29 @@
 package com.example.myapplication.core.program
 
+import java.time.DayOfWeek
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class SchedulePlannerTest {
+    @Test
+    fun selectedWeekdaysDriveDueDatesAcrossWeekBoundaries() {
+        val monday = LocalDate.parse("2026-07-06").toEpochDay()
+
+        val dates = SchedulePlanner.dueEpochDays(
+            startEpochDay = monday,
+            trainingDays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY),
+            workoutCount = 5,
+        )
+
+        assertEquals(
+            listOf("2026-07-06", "2026-07-08", "2026-07-10", "2026-07-13", "2026-07-15")
+                .map { LocalDate.parse(it).toEpochDay() },
+            dates,
+        )
+    }
+
     @Test
     fun dueDatesStartOnStartDayAndUsePreviousSessionRestDays() {
         assertEquals(listOf(100L, 102L, 104L), SchedulePlanner.dueEpochDays(100L, listOf(1, 1, 2)))

@@ -27,6 +27,12 @@ import com.example.myapplication.ui.theme.SurfaceGray
 import com.example.myapplication.ui.theme.BorderGray
 import com.example.myapplication.ui.theme.MutedText
 
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.clickable
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecommendationScreen(
@@ -36,6 +42,8 @@ fun RecommendationScreen(
     onUndo: (AdaptationKind) -> Unit,
     onBack: () -> Unit,
 ) {
+    var activeExplanation by remember { mutableStateOf<UiDecision?>(null) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -76,7 +84,8 @@ fun RecommendationScreen(
                                     uiDecision = uiDecision,
                                     onAccept = onAccept,
                                     onReject = onReject,
-                                    onUndo = onUndo
+                                    onUndo = onUndo,
+                                    onShowExplanation = { activeExplanation = uiDecision }
                                 )
                             }
                         }
@@ -85,8 +94,14 @@ fun RecommendationScreen(
             }
         }
     }
-}
 
+    activeExplanation?.let { uiDecision ->
+        RecommendationExplanationDialog(
+            uiDecision = uiDecision,
+            onDismiss = { activeExplanation = null }
+        )
+    }
+}
 @Composable
 private fun EmptyState() {
     Column(
@@ -120,6 +135,7 @@ private fun DecisionCard(
     onAccept: (Long) -> Unit,
     onReject: (Long) -> Unit,
     onUndo: (AdaptationKind) -> Unit,
+    onShowExplanation: () -> Unit
 ) {
     val entity = uiDecision.entity
     val borderColors = when (entity.status) {
@@ -148,12 +164,26 @@ private fun DecisionCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = translateKind(entity.kind),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Navy,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = translateKind(entity.kind),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Navy,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "ℹ️",
+                        color = EnergyOrange,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .clickable { onShowExplanation() }
+                            .padding(4.dp)
+                            .testTag("decision-info-button-${entity.id}")
+                    )
+                }
                 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (entity.mode == AdaptationMode.AUTO_APPLY) {
@@ -299,4 +329,86 @@ private fun parseStateDetails(json: String, kind: AdaptationKind): String {
         }
         else -> ""
     }
+}
+
+@Composable
+private fun RecommendationExplanationDialog(
+    uiDecision: UiDecision,
+    onDismiss: () -> Unit
+) {
+    val entity = uiDecision.entity
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = EnergyOrange),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Đóng")
+            }
+        },
+        title = {
+            Text(
+                text = "Chi tiết Đề xuất Thích nghi",
+                fontWeight = FontWeight.Bold,
+                color = Navy
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Info badges
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Badge(containerColor = EnergyOrange.copy(alpha = 0.15f), contentColor = EnergyOrange) {
+                        Text(translateKind(entity.kind), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Badge(containerColor = Navy.copy(alpha = 0.1f), contentColor = Navy) {
+                        Text(if (entity.mode == AdaptationMode.AUTO_APPLY) "Tự động" else "Cần đồng ý", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                HorizontalDivider(color = BorderGray.copy(alpha = 0.5f))
+
+                // Reasoning
+                Text(
+                    text = "Lý do thích nghi (Hệ thống):",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Navy,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = entity.reasonVi,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Navy
+                )
+
+                if (uiDecision.explanationText != entity.reasonVi) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Giải thích chi tiết (Coach AI):",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = EnergyOrange,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = uiDecision.explanationText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Navy
+                    )
+                } else if (uiDecision.isExplaining) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = EnergyOrange)
+                        Text("Đang phân tích từ Coach AI...", style = MaterialTheme.typography.bodySmall, color = MutedText)
+                    }
+                }
+            }
+        }
+    )
 }

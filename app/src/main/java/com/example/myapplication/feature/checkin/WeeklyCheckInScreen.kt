@@ -180,6 +180,64 @@ private fun CheckInContent(
             )
         }
 
+        // Trend Analysis Card
+        if (state.historySummary.totalCheckIns > 0) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = colors.primaryContainer.copy(alpha = 0.05f)),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, colors.primary.copy(alpha = 0.2f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "📈 XU HƯỚNG TUẦN QUA",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = EnergyOrange
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Tổng số Check-in", style = MaterialTheme.typography.bodySmall, color = customColors.mutedText)
+                            Text("${state.historySummary.totalCheckIns} tuần", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = customColors.primaryText)
+                        }
+
+                        state.historySummary.weightChangeKg?.let { weightChange ->
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Thay đổi cân nặng", style = MaterialTheme.typography.bodySmall, color = customColors.mutedText)
+                                val sign = if (weightChange >= 0) "+" else ""
+                                val color = if (weightChange > 0) EnergyOrange else com.example.myapplication.ui.theme.SuccessGreen
+                                Text("$sign${"%.1f".format(weightChange)} kg", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = color)
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = colors.outline.copy(alpha = 0.2f))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Điểm Phục Hồi TB", style = MaterialTheme.typography.bodySmall, color = customColors.mutedText)
+                            Text("${"%.1f".format(state.historySummary.averageRecovery)} / 5", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = customColors.primaryText)
+                        }
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Điểm Giấc Ngủ TB", style = MaterialTheme.typography.bodySmall, color = customColors.mutedText)
+                            Text("${"%.1f".format(state.historySummary.averageSleep)} / 5", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = customColors.primaryText)
+                        }
+                    }
+                }
+            }
+        }
+
         // Weight Input Card
         Card(
             colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant),

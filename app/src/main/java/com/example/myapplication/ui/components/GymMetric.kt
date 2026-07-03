@@ -18,8 +18,8 @@ import com.example.myapplication.ui.theme.Navy
 fun GymMetric(
     label: String,
     value: String,
-    valueColor: Color = Navy,
     modifier: Modifier = Modifier,
+    valueColor: Color = Navy,
 ) {
     Column(
         modifier = modifier,

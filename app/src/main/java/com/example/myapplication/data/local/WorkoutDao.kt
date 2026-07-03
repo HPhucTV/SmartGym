@@ -71,6 +71,12 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_sessions WHERE goalId = :goalId ORDER BY sequenceIndex ASC, id ASC")
     suspend fun getSessionsForGoal(goalId: Long): List<WorkoutSessionEntity>
 
+    @Query("SELECT * FROM goals WHERE id = :goalId LIMIT 1")
+    suspend fun getGoal(goalId: Long): GoalEntity?
+
+    @Query("UPDATE workout_sessions SET dueEpochDay = :dueEpochDay WHERE id = :sessionId")
+    suspend fun updateSessionDueEpochDay(sessionId: Long, dueEpochDay: Long): Int
+
     @Query("SELECT * FROM session_exercises WHERE sessionId = :sessionId ORDER BY orderIndex ASC")
     suspend fun getExercisesForSession(sessionId: Long): List<SessionExerciseEntity>
 

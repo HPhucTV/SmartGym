@@ -1,4 +1,4 @@
-﻿package com.example.myapplication.feature.nutrition
+package com.example.myapplication.feature.nutrition
 
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
@@ -12,10 +12,13 @@ import com.example.myapplication.data.NutritionRepository
 import com.example.myapplication.data.WorkoutRepository
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -66,6 +69,7 @@ class NutritionViewModel(
     private val workoutRepository: WorkoutRepository,
     private val nutritionRepository: NutritionRepository,
     private val foodAnalysisClient: FoodAnalysisClient = OkHttpFoodAnalysisClient(),
+    private val cloudAiConsent: Flow<Boolean> = flowOf(false),
     private val currentEpochDay: () -> Long = { LocalDate.now().toEpochDay() },
 ) : ViewModel() {
     private val scanningState = MutableStateFlow(false)
@@ -113,6 +117,18 @@ class NutritionViewModel(
 
     fun scanFood(bitmap: Bitmap?) {
         viewModelScope.launch {
+            if (!cloudAiConsent.first()) {
+                scanningState.value = false
+                scanResultState.value = null
+                scanErrorState.value = "Hãy bật đồng ý AI Cloud trong Hồ sơ trước khi quét món ăn."
+                return@launch
+            }
+            if (com.example.myapplication.app.BackendConfig.baseUrl == null) {
+                scanningState.value = false
+                scanResultState.value = null
+                scanErrorState.value = "Chưa cấu hình địa chỉ máy chủ trong mục Cài đặt."
+                return@launch
+            }
             scanningState.value = true
             scanErrorState.value = null
             scanResultState.value = null

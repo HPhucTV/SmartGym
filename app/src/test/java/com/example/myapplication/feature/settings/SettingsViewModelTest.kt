@@ -169,6 +169,8 @@ private class FakeSettingsRepository(initial: Settings = Settings(), private val
     override suspend fun setReminderEnabled(enabled: Boolean) { enabledWrites++; fail(); value.value = value.value.copy(reminderEnabled = enabled) }
     override suspend fun setReminderTime(hour: Int, minute: Int) { fail(); value.value = value.value.copy(reminderHour = hour, reminderMinute = minute) }
     override suspend fun setRestDayMode(mode: RestDayMode?) { fail(); value.value = value.value.copy(restDayMode = mode) }
+    override suspend fun setCustomServerUrl(url: String?) { fail(); value.value = value.value.copy(customServerUrl = url) }
+    override suspend fun setDarkModeEnabled(enabled: Boolean?) { fail(); value.value = value.value.copy(darkModeEnabled = enabled) }
 }
 
 private class FakeScheduler(private var failOnceOn: String? = null) : ReminderScheduler {

@@ -2,102 +2,84 @@ package com.example.myapplication.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myapplication.data.WorkoutRepository
+import com.example.myapplication.core.model.CompletedWorkout
+import com.example.myapplication.core.model.WorkoutSession
+import com.example.myapplication.core.motivation.MotivationRepository
+import com.example.myapplication.core.nutrition.NutritionDay
 import com.example.myapplication.data.NutritionRepository
+import com.example.myapplication.data.WorkoutRepository
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.temporal.TemporalAdjusters
 
 data class HomeUiState(
-    val durationMinutes: Int = 24,
-    val workoutType: String = "Strength Training",
-    val completedSets: Int = 3,
-    val totalSets: Int = 5,
-    val caloriesBurned: Int = 180,
-    val caloriesBurnedTarget: Int = 300,
-    val caloriesConsumed: Int = 1200,
-    val caloriesTarget: Int = 2000,
-    val streakDays: Int = 14,
-    val weeklyProgress: List<Int> = listOf(20, 35, 45, 30, 60, 40, 50) // Mon to Sun durations (minutes)
+    val epochDay: Long = 0,
+    val workoutTitle: String? = null,
+    val workoutFocus: String? = null,
+    val durationMinutes: Int? = null,
+    val completedExercises: Int = 0,
+    val totalExercises: Int = 0,
+    val completedThisWeek: Int = 0,
+    val streakDays: Int = 0,
+    val caloriesConsumed: Int = 0,
+    val caloriesTarget: Int? = null,
+    val dailyQuote: String = "",
 )
 
+internal fun mapHomeUiState(
+    epochDay: Long,
+    workout: WorkoutSession?,
+    completed: List<CompletedWorkout>,
+    nutrition: NutritionDay,
+    dailyQuote: String = "",
+): HomeUiState {
+    val today = LocalDate.ofEpochDay(epochDay)
+    val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toEpochDay()
+    val weekEnd = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).toEpochDay()
+    val completedDays = completed.map { it.completedEpochDay }.toSet()
+
+    var streakCursor = if (epochDay in completedDays) epochDay else epochDay - 1
+    var streakDays = 0
+    while (streakCursor in completedDays) {
+        streakDays++
+        streakCursor--
+    }
+
+    return HomeUiState(
+        epochDay = epochDay,
+        workoutTitle = workout?.titleVi,
+        workoutFocus = workout?.focusVi,
+        durationMinutes = workout?.estimatedMinutes,
+        completedExercises = workout?.exercises?.count { it.checked } ?: 0,
+        totalExercises = workout?.exercises?.size ?: 0,
+        completedThisWeek = completed.count { it.completedEpochDay in weekStart..weekEnd },
+        streakDays = streakDays,
+        caloriesConsumed = nutrition.consumed.calories,
+        caloriesTarget = nutrition.target?.calories,
+        dailyQuote = dailyQuote,
+    )
+}
 class HomeViewModel(
-    private val repository: WorkoutRepository,
-    private val nutritionRepository: NutritionRepository,
-    private val currentEpochDay: () -> Long = { LocalDate.now().toEpochDay() }
+    repository: WorkoutRepository,
+    nutritionRepository: NutritionRepository,
+    motivationRepository: MotivationRepository? = null,
+    private val currentEpochDay: () -> Long = { LocalDate.now().toEpochDay() },
 ) : ViewModel() {
+    private val quote = motivationRepository?.getDailyQuote(currentEpochDay()) ?: ""
 
     val uiState: StateFlow<HomeUiState> = combine(
         repository.observeCurrentWorkout(),
         repository.observeCompletedWorkouts(),
-        nutritionRepository.observeDay(currentEpochDay())
+        nutritionRepository.observeDay(currentEpochDay()),
     ) { currentWorkout, completedList, nutritionDay ->
-        // 1. Parse current workout details for today's summary
-        val completedCount = currentWorkout?.exercises?.count { it.checked } ?: 0
-        val totalCount = currentWorkout?.exercises?.size ?: 0
-        val duration = currentWorkout?.estimatedMinutes ?: 24
-        val type = currentWorkout?.focusVi ?: "Chưa có"
-
-        // 2. Calculate calories burned dynamically from today's exercises (60 kcal per completed exercise)
-        val calBurned = completedCount * 60
-        val calBurnedTarget = (totalCount * 60).coerceAtLeast(300) // minimum target of 300 kcal
-
-        // 3. Calories consumed vs. target from diet
-        val calConsumed = nutritionDay.consumed.calories
-        val calTarget = nutritionDay.target?.calories ?: 2000
-
-        // 4. Compute streak
-        val streak = if (completedList.isNotEmpty()) {
-            14.coerceAtLeast(completedList.size)
-        } else {
-            14
-        }
-
-        // 5. Calculate weekly progress: Mon-Sun session durations
-        val today = LocalDate.ofEpochDay(currentEpochDay())
-        val startOfWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        val endOfWeek = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
-
-        val weeklyDurations = MutableList(7) { 0 }
-        // Fallback default values to match mockup visual graph heights
-        val fallbackMock = listOf(20, 35, 45, 30, 60, 40, 50)
-        
-        completedList.forEach { completed ->
-            val date = LocalDate.ofEpochDay(completed.completedEpochDay)
-            if (!date.isBefore(startOfWeek) && !date.isAfter(endOfWeek)) {
-                val index = date.dayOfWeek.value - 1 // 0-indexed Mon-Sun
-                if (index in 0..6) {
-                    weeklyDurations[index] += 45 // Assume 45 minutes per completed workout
-                }
-            }
-        }
-
-        // If no workouts completed this week, show mock data so dashboard is populated
-        val finalProgress = if (weeklyDurations.sum() == 0) {
-            fallbackMock
-        } else {
-            weeklyDurations
-        }
-
-        HomeUiState(
-            durationMinutes = duration,
-            workoutType = type,
-            completedSets = completedCount,
-            totalSets = totalCount,
-            caloriesBurned = calBurned,
-            caloriesBurnedTarget = calBurnedTarget,
-            caloriesConsumed = calConsumed,
-            caloriesTarget = calTarget,
-            streakDays = streak,
-            weeklyProgress = finalProgress
-        )
+        mapHomeUiState(currentEpochDay(), currentWorkout, completedList, nutritionDay, quote)
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = HomeUiState()
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = HomeUiState(epochDay = currentEpochDay(), dailyQuote = quote),
     )
 }

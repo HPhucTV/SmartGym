@@ -8,7 +8,11 @@ import com.example.myapplication.core.model.GoalConfig
 import com.example.myapplication.core.model.ProgramTemplate
 import com.example.myapplication.core.model.WorkoutExercise
 import com.example.myapplication.core.model.WorkoutSession
+import com.example.myapplication.core.model.trainingDaysFromMask
+import com.example.myapplication.core.model.trainingDaysMask
+import com.example.myapplication.core.program.AdaptiveProgramPlanner
 import com.example.myapplication.core.program.SchedulePlanner
+import com.example.myapplication.core.program.TrainingSchedule
 import com.example.myapplication.data.local.GoalEntity
 import com.example.myapplication.data.local.GymDatabase
 import com.example.myapplication.data.local.SessionExerciseEntity
@@ -33,6 +37,8 @@ class RoomWorkoutRepository(
                     sessionsPerWeek = it.goal.sessionsPerWeek,
                     durationWeeks = it.goal.durationWeeks,
                     restDayMode = it.goal.restDayMode,
+                    trainingDays = trainingDaysFromMask(it.goal.trainingDaysMask),
+                    sessionDurationMinutes = it.goal.sessionDurationMinutes,
                 ),
                 totalWorkouts = it.totalWorkouts,
             )
@@ -54,14 +60,12 @@ class RoomWorkoutRepository(
         startEpochDay: Long,
     ) {
         validateProgramMatch(config, program)
-        val orderedWorkouts = program.workouts.sortedBy { it.sequence }
+        TrainingSchedule.validate(config.trainingDays, config.sessionDurationMinutes)
+        val orderedWorkouts = AdaptiveProgramPlanner.adapt(program, config)
         require(orderedWorkouts.map { it.sequence } == orderedWorkouts.indices.toList()) {
             "Program workouts must use contiguous sequence values starting at zero"
         }
-        val dueEpochDays = SchedulePlanner.dueEpochDays(
-            startEpochDay,
-            orderedWorkouts.map { it.restDaysAfter },
-        )
+        val dueEpochDays = SchedulePlanner.dueEpochDays(startEpochDay, config.trainingDays, orderedWorkouts.size)
 
         database.withTransaction {
             dao.archiveActiveGoals()
@@ -74,6 +78,8 @@ class RoomWorkoutRepository(
                     sessionsPerWeek = config.sessionsPerWeek,
                     durationWeeks = config.durationWeeks,
                     restDayMode = config.restDayMode,
+                    trainingDaysMask = trainingDaysMask(config.trainingDays),
+                    sessionDurationMinutes = config.sessionDurationMinutes,
                     createdEpochDay = startEpochDay,
                 ),
             )
@@ -131,9 +137,19 @@ class RoomWorkoutRepository(
 
         val delayDays = Math.subtractExact(completedEpochDay, session.dueEpochDay).coerceAtLeast(0L)
         if (delayDays > 0) {
-            dao.maxLaterIncompleteDueEpochDay(session.goalId, session.sequenceIndex)?.let { latestDue ->
-                Math.addExact(latestDue, delayDays)
-                dao.shiftLaterIncompleteSessions(session.goalId, session.sequenceIndex, delayDays)
+            val laterSessions = dao.getSessionsForGoal(session.goalId)
+                .filter { it.sequenceIndex > session.sequenceIndex && it.completedEpochDay == null }
+                .sortedBy { it.sequenceIndex }
+            val trainingDays = dao.getGoal(session.goalId)?.let { trainingDaysFromMask(it.trainingDaysMask) }.orEmpty()
+            if (laterSessions.isNotEmpty() && trainingDays.isNotEmpty()) {
+                val newDueDates = SchedulePlanner.dueEpochDays(
+                    startEpochDay = Math.addExact(completedEpochDay, 1L),
+                    trainingDays = trainingDays,
+                    workoutCount = laterSessions.size,
+                )
+                laterSessions.zip(newDueDates).forEach { (later, dueEpochDay) ->
+                    dao.updateSessionDueEpochDay(later.id, dueEpochDay)
+                }
             }
         }
         CompleteWorkoutResult.Completed
@@ -149,15 +165,8 @@ class RoomWorkoutRepository(
         require(program.equipmentProfile == config.equipmentProfile) {
             "Program equipment does not match goal configuration"
         }
-        require(program.sessionsPerWeek == config.sessionsPerWeek) {
-            "Program weekly frequency does not match goal configuration"
-        }
         require(program.durationWeeks == config.durationWeeks) {
             "Program duration does not match goal configuration"
-        }
-        val expectedWorkoutCount = Math.multiplyExact(config.sessionsPerWeek, config.durationWeeks)
-        require(program.workouts.size == expectedWorkoutCount) {
-            "Program workout count does not match frequency and duration"
         }
     }
 

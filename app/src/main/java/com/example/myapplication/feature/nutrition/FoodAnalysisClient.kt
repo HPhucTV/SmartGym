@@ -26,10 +26,13 @@ class OkHttpFoodAnalysisClient(
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build(),
-    private val endpointUrl: String = "http://10.0.2.2:3000/api/analyze-food",
+    private val endpointProvider: () -> String? = {
+        com.example.myapplication.app.BackendConfig.baseUrl?.let { "$it/api/analyze-food" }
+    },
 ) : FoodAnalysisClient {
     override suspend fun analyze(bitmap: Bitmap?): ScanResult? = withContext(Dispatchers.IO) {
         if (bitmap == null) return@withContext null
+        val endpointUrl = endpointProvider() ?: return@withContext null
 
         val stream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
@@ -49,8 +52,14 @@ class OkHttpFoodAnalysisClient(
             .build()
 
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return@withContext null
-            val bodyString = response.body?.string() ?: return@withContext null
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string()
+                val serverErrorMessage = runCatching {
+                    Json.parseToJsonElement(errorBody ?: "").jsonObject["error"]?.jsonPrimitive?.content
+                }.getOrNull()
+                throw java.io.IOException(serverErrorMessage ?: "Lỗi HTTP ${response.code}")
+            }
+            val bodyString = response.body?.string() ?: throw java.io.IOException("Phản hồi trống từ máy chủ")
             parseScanResult(bodyString)
         }
     }

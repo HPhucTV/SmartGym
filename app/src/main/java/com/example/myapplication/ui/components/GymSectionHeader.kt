@@ -18,9 +18,9 @@ import com.example.myapplication.ui.theme.Navy
 @Composable
 fun GymSectionHeader(
     title: String,
+    modifier: Modifier = Modifier,
     actionText: String? = null,
     onActionClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),

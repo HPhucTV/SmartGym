@@ -34,7 +34,7 @@ class RoomWorkoutSnapshotTest {
             val goalId = requireNotNull(repository.observeActiveGoal().first()).id
 
             val sessions = database.workoutDao().getSessionsForGoal(goalId)
-            assertEquals(listOf(100L, 102L), sessions.map { it.dueEpochDay })
+            assertEquals(listOf(102L, 105L), sessions.map { it.dueEpochDay })
             assertEquals(listOf(0, 1), sessions.map { it.sequenceIndex })
             val exercises = database.workoutDao().getExercisesForSession(sessions.first().id)
             assertEquals(listOf("squat", "plank"), exercises.map { it.exerciseId })

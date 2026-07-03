@@ -53,16 +53,52 @@ class PersonalizationTypeConverters {
         DailyNutritionEntity::class,
         WeeklyCheckInEntity::class,
         AdaptationDecisionEntity::class,
+        AchievementEntity::class,
     ],
-    version = 2,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(WorkoutTypeConverters::class, PersonalizationTypeConverters::class)
 abstract class GymDatabase : RoomDatabase() {
     abstract fun workoutDao(): WorkoutDao
     abstract fun personalizationDao(): PersonalizationDao
+    abstract fun achievementDao(): AchievementDao
 
     companion object {
+        val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `achievements` (
+                        `type` TEXT NOT NULL,
+                        `unlockedAtEpochMillis` INTEGER NOT NULL,
+                        PRIMARY KEY(`type`)
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `goals` ADD COLUMN `trainingDaysMask` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `goals` ADD COLUMN `sessionDurationMinutes` INTEGER NOT NULL DEFAULT 45")
+                db.execSQL(
+                    """
+                    UPDATE `goals` SET `trainingDaysMask` = CASE `sessionsPerWeek`
+                        WHEN 1 THEN 1
+                        WHEN 2 THEN 9
+                        WHEN 3 THEN 21
+                        WHEN 4 THEN 27
+                        WHEN 5 THEN 55
+                        WHEN 6 THEN 63
+                        ELSE 1
+                    END
+                    """.trimIndent(),
+                )
+            }
+        }
+
         val MIGRATION_1_2: Migration = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(

@@ -28,6 +28,8 @@ fun SettingsRoute(
         onRest = viewModel::setRestDayMode,
         onReminder = viewModel::setReminderEnabled,
         onTime = viewModel::setReminderTime,
+        onServerUrlChanged = viewModel::setCustomServerUrl,
+        onDarkModeChanged = viewModel::setDarkModeEnabled,
         onRequestReplace = viewModel::requestReplaceGoal,
         onRequestDelete = viewModel::requestDeleteGoal,
         onCancel = viewModel::cancelConfirmation,

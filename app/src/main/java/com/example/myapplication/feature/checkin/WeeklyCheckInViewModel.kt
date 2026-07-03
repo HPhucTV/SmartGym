@@ -52,45 +52,60 @@ class WeeklyCheckInViewModel(
         }
     }
 
-    val uiState: StateFlow<WeeklyCheckInUiState> = combine(
-        profileLoaded,
+    private val formState = combine(
         weightState,
         energyState,
         hungerState,
         recoveryState,
         sleepQualityState,
+        ::CheckInFormState,
+    )
+    private val submissionState = combine(
         noteState,
         isSubmittingState,
         errorState,
         successState,
-        validationErrorsState
-    ) { args ->
-        val loaded = args[0] as? Boolean
-        val weight = args[1] as String
-        val energy = args[2] as Int
-        val hunger = args[3] as Int
-        val recovery = args[4] as Int
-        val sleep = args[5] as Int
-        val note = args[6] as String
-        val submitting = args[7] as Boolean
-        val err = args[8] as? String
-        val success = args[9] as Boolean
-        val valErrors = args[10] as List<String>
+        validationErrorsState,
+        ::CheckInSubmissionState,
+    )
+
+    val uiState: StateFlow<WeeklyCheckInUiState> = combine(
+        profileLoaded,
+        formState,
+        submissionState,
+        personalizationDao.observeAllCheckIns(),
+    ) { loaded, form, submission, checkIns ->
+        val historySummary = if (checkIns.isEmpty()) {
+            CheckInHistorySummary()
+        } else {
+            val weightChange = if (checkIns.size >= 2) {
+                checkIns[0].weightKg - checkIns[1].weightKg
+            } else null
+            val avgRecovery = checkIns.map { it.recovery }.average()
+            val avgSleep = checkIns.map { it.sleepQuality }.average()
+            CheckInHistorySummary(
+                weightChangeKg = weightChange,
+                averageRecovery = if (avgRecovery.isNaN()) 0.0 else avgRecovery,
+                averageSleep = if (avgSleep.isNaN()) 0.0 else avgSleep,
+                totalCheckIns = checkIns.size
+            )
+        }
 
         when (loaded) {
             null -> WeeklyCheckInUiState.Loading
             false -> WeeklyCheckInUiState.NoProfile
             true -> WeeklyCheckInUiState.Input(
-                weightKgStr = weight,
-                energy = energy,
-                hunger = hunger,
-                recovery = recovery,
-                sleepQuality = sleep,
-                note = note,
-                isSubmitting = submitting,
-                error = err,
-                success = success,
-                validationErrors = valErrors
+                weightKgStr = form.weight,
+                energy = form.energy,
+                hunger = form.hunger,
+                recovery = form.recovery,
+                sleepQuality = form.sleepQuality,
+                note = submission.note,
+                isSubmitting = submission.isSubmitting,
+                error = submission.error,
+                success = submission.success,
+                validationErrors = submission.validationErrors,
+                historySummary = historySummary
             )
         }
     }.stateIn(
@@ -220,3 +235,19 @@ class WeeklyCheckInViewModel(
         return cleaned.toDoubleOrNull()
     }
 }
+
+private data class CheckInFormState(
+    val weight: String,
+    val energy: Int,
+    val hunger: Int,
+    val recovery: Int,
+    val sleepQuality: Int,
+)
+
+private data class CheckInSubmissionState(
+    val note: String,
+    val isSubmitting: Boolean,
+    val error: String?,
+    val success: Boolean,
+    val validationErrors: List<String>,
+)

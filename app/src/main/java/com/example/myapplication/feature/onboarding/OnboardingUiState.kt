@@ -1,8 +1,9 @@
 package com.example.myapplication.feature.onboarding
 
 import com.example.myapplication.core.model.*
+import java.time.DayOfWeek
 
-enum class OnboardingStep { GOAL, LEVEL, EQUIPMENT, COMMITMENT, REST_BEHAVIOR, REVIEW }
+enum class OnboardingStep { GOAL, LEVEL, EQUIPMENT, TRAINING_DAYS, SESSION_DURATION, REST_BEHAVIOR, REVIEW }
 
 data class WorkoutCommitment(val sessionsPerWeek: Int, val durationWeeks: Int)
 
@@ -13,6 +14,8 @@ data class OnboardingDraft(
     val sessionsPerWeek: Int? = null,
     val durationWeeks: Int? = null,
     val restDayMode: RestDayMode? = null,
+    val trainingDays: Set<DayOfWeek> = emptySet(),
+    val sessionDurationMinutes: Int? = null,
 )
 
 data class OnboardingOptions(

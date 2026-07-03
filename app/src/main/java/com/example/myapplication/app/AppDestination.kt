@@ -7,9 +7,10 @@ enum class AppDestination(
     val iconText: String,
 ) {
     ONBOARDING("onboarding", "", "Tạo mục tiêu", "🎯"),
-    HOME("home", "Trang chủ", "SmartGym Dashboard", "🏠"),
-    WORKOUTS("workouts", "Bài tập", "Bài tập hôm nay", "🏋️"),
+    HOME("home", "Hôm nay", "SmartGym Dashboard", "🏠"),
+    WORKOUTS("workouts", "", "Bài tập hôm nay", "🏋️"),
     PROGRESS("progress", "Tiến độ", "Tiến độ tập luyện", "📊"),
-    SEARCH("search", "Tra cứu", "Tra cứu bài tập", "🔍"),
-    PROFILE("profile", "Cá nhân", "Thông tin cá nhân", "👤"),
+    SETTINGS("settings", "Cài đặt", "Cài đặt ứng dụng", "⚙️"),
+    SEARCH("search", "", "Tra cứu bài tập", "🔍"),
+    PROFILE("profile", "", "Thông tin cá nhân", "👤"),
 }

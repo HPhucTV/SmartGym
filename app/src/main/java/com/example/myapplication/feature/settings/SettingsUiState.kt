@@ -14,6 +14,8 @@ sealed interface SettingsUiState {
         val reminderEnabled: Boolean,
         val reminderHour: Int,
         val reminderMinute: Int,
+        val customServerUrl: String? = null,
+        val darkModeEnabled: Boolean? = null,
         val saving: Boolean = false,
         val confirmation: PendingConfirmation = PendingConfirmation.NONE,
         val message: String? = null,

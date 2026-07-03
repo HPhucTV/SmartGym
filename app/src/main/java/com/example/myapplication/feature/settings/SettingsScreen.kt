@@ -28,6 +28,8 @@ fun SettingsScreen(
     onRest: (RestDayMode) -> Unit,
     onReminder: (Boolean) -> Unit,
     onTime: (Int, Int) -> Unit,
+    onServerUrlChanged: (String?) -> Unit,
+    onDarkModeChanged: (Boolean?) -> Unit,
     onRequestReplace: () -> Unit,
     onRequestDelete: () -> Unit,
     onCancel: () -> Unit,
@@ -41,7 +43,7 @@ fun SettingsScreen(
         SettingsUiState.Loading -> Box(Modifier.fillMaxSize()) { CircularProgressIndicator() }
         is SettingsUiState.Error -> Text(state.message, Modifier.padding(24.dp))
         is SettingsUiState.Content -> SettingsContent(
-            state, onRest, onReminder, onTime, onRequestReplace, onRequestDelete, onCancel, onConfirm,
+            state, onRest, onReminder, onTime, onServerUrlChanged, onDarkModeChanged, onRequestReplace, onRequestDelete, onCancel, onConfirm,
             onNavigateToProfile, onNavigateToCheckIn, onNavigateToRecommendations, onBack
         )
     }
@@ -53,6 +55,8 @@ private fun SettingsContent(
     onRest: (RestDayMode) -> Unit,
     onReminder: (Boolean) -> Unit,
     onTime: (Int, Int) -> Unit,
+    onServerUrlChanged: (String?) -> Unit,
+    onDarkModeChanged: (Boolean?) -> Unit,
     onReplace: () -> Unit,
     onDelete: () -> Unit,
     onCancel: () -> Unit,
@@ -175,6 +179,72 @@ private fun SettingsContent(
                 }
             }
         }
+
+        Text("Giao diện", style = MaterialTheme.typography.titleMedium)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, colors.outline),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val options = listOf(
+                    Triple("Theo hệ thống", null as Boolean?, "system"),
+                    Triple("Chế độ sáng", false as Boolean?, "light"),
+                    Triple("Chế độ tối", true as Boolean?, "dark")
+                )
+                options.forEach { (label, value, tag) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 40.dp)
+                            .selectable(
+                                selected = state.darkModeEnabled == value,
+                                enabled = !state.saving,
+                                role = Role.RadioButton,
+                                onClick = { onDarkModeChanged(value) }
+                            )
+                            .testTag("darktheme-option-$tag"),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        RadioButton(state.darkModeEnabled == value, null, enabled = !state.saving)
+                        Text(label, color = customColors.primaryText)
+                    }
+                }
+            }
+        }
+
+        Text("Máy chủ kết nối (AI Analysis)", style = MaterialTheme.typography.titleMedium)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, colors.outline),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Địa chỉ URL/IP của server máy tính. Để trống để sử dụng mặc định.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = customColors.mutedText
+                )
+                OutlinedTextField(
+                    value = state.customServerUrl ?: "",
+                    onValueChange = { newUrl ->
+                        val urlToSave = newUrl.trim().takeIf { it.isNotEmpty() }
+                        onServerUrlChanged(urlToSave)
+                    },
+                    placeholder = { Text("Ví dụ: http://192.168.1.7:3000") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EnergyOrange,
+                        focusedLabelColor = EnergyOrange
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag("settings-server-url-field")
+                )
+            }
+        }
+
         TextButton(
             onClick = onDelete,
             enabled = !state.saving,

@@ -35,7 +35,14 @@ class WorkoutReminderReceiver : BroadcastReceiver() {
     }
 
     private fun postNotification(app: Context) {
-        val permissionGranted = ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        val permissionGranted = if (Build.VERSION.SDK_INT >= 33) {
+            ContextCompat.checkSelfPermission(
+                app,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
         if (!shouldPostNotification(Build.VERSION.SDK_INT, permissionGranted)) return
         val manager = app.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(

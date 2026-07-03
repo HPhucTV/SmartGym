@@ -16,7 +16,7 @@ class AppContainer(context: Context) {
         GymDatabase::class.java,
         "gym.db",
     )
-        .addMigrations(GymDatabase.MIGRATION_1_2)
+        .addMigrations(GymDatabase.MIGRATION_1_2, GymDatabase.MIGRATION_2_3, GymDatabase.MIGRATION_3_4)
         .build()
 
     val catalogRepository = AssetCatalogRepository(applicationContext)
@@ -30,5 +30,9 @@ class AppContainer(context: Context) {
         nutritionRepository = nutritionRepository
     )
     val coachExplanationClient = com.example.myapplication.data.OkHttpCoachExplanationClient()
+    val coachReviewClient = com.example.myapplication.data.OkHttpCoachReviewClient()
+    val foodAnalysisClient = com.example.myapplication.feature.nutrition.OkHttpFoodAnalysisClient()
+    val motivationRepository = com.example.myapplication.core.motivation.MotivationRepository(applicationContext)
+    val achievementChecker = com.example.myapplication.core.achievement.AchievementChecker(database.achievementDao())
 }
 

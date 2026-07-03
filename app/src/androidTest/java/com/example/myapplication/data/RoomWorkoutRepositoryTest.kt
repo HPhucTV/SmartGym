@@ -15,6 +15,7 @@ import com.example.myapplication.core.model.RestDayMode
 import com.example.myapplication.core.model.WorkoutTemplate
 import com.example.myapplication.data.local.GymDatabase
 import kotlinx.coroutines.flow.first
+import java.time.DayOfWeek
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -66,7 +67,7 @@ class RoomWorkoutRepositoryTest {
         val next = repository.observeCurrentWorkout().first()
         requireNotNull(next)
         assertEquals(1, next.sequenceIndex)
-        assertEquals(103, next.dueEpochDay)
+        assertEquals(102, next.dueEpochDay)
         assertEquals(listOf(CompletedWorkout(activeGoal.id, 101)), repository.observeCompletedWorkouts().first())
         assertEquals(CompleteWorkoutResult.AlreadyCompleted, repository.completeWorkout(current.id, 102))
     }
@@ -112,7 +113,7 @@ class RoomWorkoutRepositoryTest {
         val second = requireNotNull(repository.observeCurrentWorkout().first())
         second.exercises.forEach { repository.setExerciseChecked(second.id, it.orderIndex, true) }
         repository.completeWorkout(second.id, 104)
-        assertEquals(106L, repository.observeCurrentWorkout().first()?.dueEpochDay)
+        assertEquals(107L, repository.observeCurrentWorkout().first()?.dueEpochDay)
 
         repository.archiveActiveGoal()
         assertNull(repository.observeActiveGoal().first())
@@ -158,6 +159,12 @@ class RoomWorkoutRepositoryTest {
             sessionsPerWeek = sessionsPerWeek,
             durationWeeks = 1,
             restDayMode = RestDayMode.FULL_REST,
+            trainingDays = if (sessionsPerWeek == 2) {
+                setOf(DayOfWeek.SATURDAY, DayOfWeek.MONDAY)
+            } else {
+                setOf(DayOfWeek.SATURDAY, DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY)
+            },
+            sessionDurationMinutes = 45,
         )
     }
 }

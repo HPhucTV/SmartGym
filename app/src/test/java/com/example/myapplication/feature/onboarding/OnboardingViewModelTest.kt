@@ -20,19 +20,38 @@ import org.junit.runner.Description
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import java.time.DayOfWeek
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class OnboardingViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     @get:Rule val mainRule = MainDispatcherRule(dispatcher)
 
+    @Test fun `user selects one to six weekdays and a duration bucket`() = runTest(dispatcher) {
+        val vm = viewModel()
+        vm.selectGoal(FitnessGoal.GENERAL_FITNESS)
+        vm.selectLevel(ExperienceLevel.BEGINNER)
+        vm.selectEquipment(EquipmentProfile.BODYWEIGHT_ONLY)
+
+        DayOfWeek.entries.take(6).forEach(vm::toggleTrainingDay)
+        vm.toggleTrainingDay(DayOfWeek.SUNDAY)
+        vm.selectSessionDuration(75)
+
+        val draft = (vm.uiState.value as OnboardingUiState.Editing).draft
+        assertEquals(6, draft.trainingDays.size)
+        assertFalse(DayOfWeek.SUNDAY in draft.trainingDays)
+        assertEquals(75, draft.sessionDurationMinutes)
+    }
+
     @Test fun `progresses through one decision at a time and can go back`() = runTest(dispatcher) {
             val vm = viewModel()
             assertStep(vm, OnboardingStep.GOAL)
             vm.selectGoal(FitnessGoal.GENERAL_FITNESS); vm.next(); assertStep(vm, OnboardingStep.LEVEL)
             vm.selectLevel(ExperienceLevel.BEGINNER); vm.next(); assertStep(vm, OnboardingStep.EQUIPMENT)
-            vm.selectEquipment(EquipmentProfile.BODYWEIGHT_ONLY); vm.next(); assertStep(vm, OnboardingStep.COMMITMENT)
-            vm.selectCommitment(3, 4); vm.next(); assertStep(vm, OnboardingStep.REST_BEHAVIOR)
+            vm.selectEquipment(EquipmentProfile.BODYWEIGHT_ONLY); vm.next(); assertStep(vm, OnboardingStep.TRAINING_DAYS)
+            listOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY).forEach(vm::toggleTrainingDay)
+            vm.next(); assertStep(vm, OnboardingStep.SESSION_DURATION)
+            vm.selectSessionDuration(45); vm.next(); assertStep(vm, OnboardingStep.REST_BEHAVIOR)
             vm.selectRestDayMode(RestDayMode.FULL_REST); vm.next(); assertStep(vm, OnboardingStep.REVIEW)
             vm.back(); assertStep(vm, OnboardingStep.REST_BEHAVIOR)
     }
@@ -80,7 +99,7 @@ class OnboardingViewModelTest {
         val repository = FakeWorkoutRepository(gate = gate)
         val vm = viewModel(repository)
         completeGeneral(vm)
-        repeat(5) { vm.next() }
+        repeat(6) { vm.next() }
         assertStep(vm, OnboardingStep.REVIEW)
 
         vm.createGoal()
@@ -143,7 +162,9 @@ class OnboardingViewModelTest {
 
     private fun completeGeneral(vm: OnboardingViewModel) {
         vm.selectGoal(FitnessGoal.GENERAL_FITNESS); vm.selectLevel(ExperienceLevel.BEGINNER)
-        vm.selectEquipment(EquipmentProfile.BODYWEIGHT_ONLY); vm.selectCommitment(3, 4)
+        vm.selectEquipment(EquipmentProfile.BODYWEIGHT_ONLY)
+        listOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY).forEach(vm::toggleTrainingDay)
+        vm.selectSessionDuration(45)
         vm.selectRestDayMode(RestDayMode.FULL_REST)
     }
 
