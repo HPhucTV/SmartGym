@@ -7,6 +7,8 @@ import com.example.myapplication.core.program.ProgramSelectionResult
 import com.example.myapplication.core.program.ProgramSelector
 import com.example.myapplication.core.progress.ProgressCalculator
 import com.example.myapplication.core.progress.WeeklyInsightEngine
+import com.example.myapplication.core.progress.GoalForecast
+import com.example.myapplication.core.progress.GoalForecastCalculator
 import com.example.myapplication.data.WorkoutRepository
 import com.example.myapplication.data.WorkoutFeedbackRepository
 import com.example.myapplication.core.feedback.WorkoutFeedback
@@ -154,6 +156,26 @@ class ProgressViewModel(
             feedback = feedback,
             todayEpochDay = currentDay,
         )
+        val activeHistory = workoutHistory.filter { it.goalId == goal.id }
+        val firstDue = activeHistory.minOfOrNull { it.dueEpochDay }
+        val finalDue = activeHistory.maxOfOrNull { it.dueEpochDay }
+        val elapsedWeeks = firstDue?.let { due ->
+            runCatching { Math.subtractExact(currentDay, due).coerceAtLeast(0L) / 7L }.getOrDefault(0L)
+        } ?: 0L
+        val forecast = if (firstDue == null || finalDue == null) {
+            GoalForecast.InsufficientData
+        } else {
+            runCatching {
+                GoalForecastCalculator.calculate(
+                    totalSessions = goal.totalWorkouts,
+                    completedSessions = activeDates.size,
+                    sessionsPerWeek = goal.config.sessionsPerWeek,
+                    firstDueEpochDay = firstDue,
+                    plannedFinalDueEpochDay = finalDue,
+                    todayEpochDay = currentDay,
+                )
+            }.getOrDefault(GoalForecast.InsufficientData)
+        }
 
         return ProgressUiState.Content(
             percentage = ProgressCalculator.percentage(activeDates.size, goal.totalWorkouts),
@@ -169,6 +191,9 @@ class ProgressViewModel(
             weeklyStats = weeklyStats,
             muscleStats = sortedMuscleStats,
             weeklyInsights = weeklyInsights,
+            goalForecast = forecast,
+            forecastCompletedSessions = activeDates.size,
+            forecastElapsedWeeks = elapsedWeeks,
         )
     }
 }

@@ -13,6 +13,7 @@ import org.junit.Rule
 import org.junit.Test
 import com.example.myapplication.core.feedback.WorkoutDifficulty
 import com.example.myapplication.core.feedback.WorkoutFeedback
+import com.example.myapplication.core.progress.GoalForecast
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProgressViewModelTest {
@@ -109,6 +110,32 @@ class ProgressViewModelTest {
         val state = vm.uiState.value as ProgressUiState.Content
         assertTrue(state.weeklyInsights.isNotEmpty())
         assertTrue(state.weeklyInsights.size <= 3)
+    }
+
+    @Test fun `forecast exposes status and evidence inputs`() = runTest(dispatcher) {
+        val first = day("2026-05-25")
+        val entries = List(12) { index ->
+            WorkoutHistoryEntry(
+                sessionId = index.toLong(),
+                goalId = 1,
+                sequenceIndex = index,
+                dueEpochDay = first + index * 5L,
+                completedEpochDay = if (index < 6) first + index * 5L else null,
+                estimatedMinutes = 30,
+            )
+        }
+        val completed = entries.mapNotNull { row ->
+            row.completedEpochDay?.let { CompletedWorkout(1, it) }
+        }
+        val vm = ProgressViewModel(FakeProgressRepository(goal(), completed, entries)) {
+            day("2026-06-22")
+        }
+        runCurrent()
+
+        val state = vm.uiState.value as ProgressUiState.Content
+        assertTrue(state.goalForecast is GoalForecast.OnTrack)
+        assertEquals(6, state.forecastCompletedSessions)
+        assertEquals(4, state.forecastElapsedWeeks)
     }
 
     private fun goal(sessions: Int = 3) = ActiveGoal(1, GoalConfig(FitnessGoal.GENERAL_FITNESS, ExperienceLevel.BEGINNER,

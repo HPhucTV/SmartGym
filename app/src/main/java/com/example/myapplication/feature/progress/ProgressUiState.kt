@@ -3,6 +3,7 @@ package com.example.myapplication.feature.progress
 import com.example.myapplication.core.model.MuscleGroup
 import java.time.YearMonth
 import com.example.myapplication.core.progress.WeeklyInsight
+import com.example.myapplication.core.progress.GoalForecast
 
 data class WeeklyCompletedStats(
     val weekLabel: String,
@@ -31,6 +32,9 @@ sealed interface ProgressUiState {
         val weeklyStats: List<WeeklyCompletedStats> = emptyList(),
         val muscleStats: List<MuscleCompletedStats> = emptyList(),
         val weeklyInsights: List<WeeklyInsight> = emptyList(),
+        val goalForecast: GoalForecast = GoalForecast.InsufficientData,
+        val forecastCompletedSessions: Int = 0,
+        val forecastElapsedWeeks: Long = 0,
     ) : ProgressUiState
 
     data class NoActiveGoal(
