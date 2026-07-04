@@ -84,7 +84,7 @@ object AdaptiveProgramPlanner {
     private fun List<ExercisePrescription>.trimToBudget(budgetMinutes: Int): List<ExercisePrescription> {
         val selected = toMutableList()
         while (selected.size > 1 && selected.sumOf(::estimatedMinutes) > budgetMinutes) {
-            selected.removeLast()
+            selected.removeAt(selected.lastIndex)
         }
         return selected
     }
