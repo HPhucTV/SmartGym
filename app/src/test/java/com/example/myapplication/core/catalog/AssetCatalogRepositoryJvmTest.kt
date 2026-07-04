@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class AssetCatalogRepositoryJvmTest {
     @Test
@@ -30,6 +31,15 @@ class AssetCatalogRepositoryJvmTest {
         val error = assertThrows(IllegalArgumentException::class.java) { repository.programs }
         assertTrue(error.message.orEmpty().contains("Invalid bundled program catalog"))
         assertTrue(error.message.orEmpty().contains("blank titleVi"))
+    }
+
+    @Test
+    fun `bundled movement blocks parse and validate`() {
+        val raw = File("src/main/assets/catalog/movement_blocks_vi.json").readText()
+        val blocks = CatalogParser.parseMovementBlocks(raw)
+
+        assertEquals(14, blocks.size)
+        assertTrue(CatalogValidator.validateMovementBlocks(blocks).isEmpty())
     }
 
     private companion object {

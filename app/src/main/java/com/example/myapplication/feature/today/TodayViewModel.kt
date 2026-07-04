@@ -6,6 +6,7 @@ import com.example.myapplication.core.feedback.WorkoutDifficulty
 import com.example.myapplication.core.program.ProgramPhase
 import com.example.myapplication.core.program.ProgramPhasePlanner
 import com.example.myapplication.core.catalog.ExerciseSubstitutionEngine
+import com.example.myapplication.core.catalog.MovementBlockPlanner
 import com.example.myapplication.core.model.*
 import com.example.myapplication.data.*
 import kotlinx.coroutines.CancellationException
@@ -31,6 +32,7 @@ class TodayViewModel(
     private val coachCoordinator: TodayCoachCoordinator? = null,
     private val cloudAiConsent: Flow<Boolean> = flowOf(false),
     private val feedbackRepository: WorkoutFeedbackRepository? = null,
+    private val movementBlocks: List<MovementBlock> = emptyList(),
     private val currentEpochDay: () -> Long = { java.time.LocalDate.now().toEpochDay() },
 ) : ViewModel() {
     private val _celebration = MutableStateFlow(CelebrationState())
@@ -458,6 +460,13 @@ class TodayViewModel(
         }
         val pending = ops.pending.filter { it.first == session.id }.map { it.second }.toSet()
         val checked = rows.count { it.checked }
+        val activePatterns = rows.mapNotNull { row -> catalog[row.exerciseId]?.movementPattern }.toSet()
+        val warmUp = movementBlocks.takeIf { it.isNotEmpty() }?.let {
+            MovementBlockPlanner.select(it, MovementBlockKind.WARM_UP, activePatterns).toUi()
+        }
+        val coolDown = movementBlocks.takeIf { it.isNotEmpty() }?.let {
+            MovementBlockPlanner.select(it, MovementBlockKind.COOL_DOWN, activePatterns).toUi()
+        }
         val hour = try { java.time.LocalTime.now().hour } catch (_: Exception) { 8 }
         val phase = runCatching {
             val durationWeeks = goal.config.durationWeeks.coerceAtLeast(1)
@@ -485,9 +494,18 @@ class TodayViewModel(
             selectedTimeBudgetMinutes = session.selectedTimeBudgetMinutes,
             omittedExerciseCount = session.omittedExerciseCount,
             canChangeTimeBudget = checked == 0 && pending.isEmpty() && ops.completingSessionId == null,
+            warmUp = warmUp,
+            coolDown = coolDown,
         )
     }
 }
+
+private fun MovementBlock.toUi() = AdvisoryMovementBlockUi(
+    id = id,
+    titleVi = titleVi,
+    stepsVi = stepsVi,
+    estimatedMinutes = estimatedMinutes,
+)
 
 private fun ExercisePrescription.displayText(): String = when {
     durationSeconds != null -> "$durationSeconds giây"

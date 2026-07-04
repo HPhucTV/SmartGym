@@ -107,6 +107,39 @@ class TodayViewModelTest {
         assertTrue(repository.timeBudgets.isEmpty())
     }
 
+    @Test fun `maps advisory warmup and cooldown from active movement patterns`() = runTest(dispatcher) {
+        val blocks = listOf(
+            MovementBlock(
+                "push_warmup",
+                MovementBlockKind.WARM_UP,
+                setOf(MovementPattern.HORIZONTAL_PUSH),
+                "Khởi động đẩy",
+                listOf("Xoay vai", "Đẩy tường"),
+                4,
+            ),
+            MovementBlock(
+                "push_cooldown",
+                MovementBlockKind.COOL_DOWN,
+                setOf(MovementPattern.HORIZONTAL_PUSH),
+                "Thả lỏng đẩy",
+                listOf("Thả lỏng tay", "Hít thở đều"),
+                4,
+            ),
+        )
+        val vm = TodayViewModel(
+            repository = FakeTodayRepository(goal(), workout()),
+            exercises = catalog,
+            movementBlocks = blocks,
+            currentEpochDay = { 100L },
+        )
+        runCurrent()
+
+        val state = vm.uiState.value as TodayUiState.Workout
+        assertEquals("push_warmup", state.warmUp?.id)
+        assertEquals("push_cooldown", state.coolDown?.id)
+        assertFalse(state.warmUp!!.participatesInCompletion)
+    }
+
     @Test fun `shows both recovery modes goal complete and missing catalog error`() = runTest(dispatcher) {
         val repository = FakeTodayRepository(goal(RestDayMode.FULL_REST), workout(due = 101))
         val vm = TodayViewModel(repository, catalog) { 100 }; runCurrent()

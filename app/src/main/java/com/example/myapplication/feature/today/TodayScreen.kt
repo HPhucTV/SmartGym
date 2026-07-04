@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -535,6 +536,12 @@ private fun WorkoutContent(
                 }
             }
 
+            state.warmUp?.let { block ->
+                item(key = "warmup:${block.id}") {
+                    AdvisoryMovementBlockCard("Khởi động", block)
+                }
+            }
+
             // AI Coach Tip card
             item(key = "coach-tip") {
                 AICoachTipCard(
@@ -559,6 +566,12 @@ private fun WorkoutContent(
                     },
                     onSubstitute = { onRequestSubstitution(row.orderIndex) },
                 )
+            }
+
+            state.coolDown?.let { block ->
+                item(key = "cooldown:${block.id}") {
+                    AdvisoryMovementBlockCard("Thả lỏng", block)
+                }
             }
 
             // Interaction error
@@ -625,6 +638,43 @@ private fun WorkoutContent(
                     onFinished = { timerVisible = false },
                     onClose = { timerVisible = false }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdvisoryMovementBlockCard(
+    sectionLabel: String,
+    block: AdvisoryMovementBlockUi,
+) {
+    var expanded by rememberSaveable(block.id) { mutableStateOf(false) }
+    val customColors = MaterialTheme.colorScheme.customColors
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .heightIn(min = 48.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(sectionLabel, color = EnergyOrange, style = MaterialTheme.typography.labelMedium)
+                    Text(block.titleVi, color = customColors.primaryText, fontWeight = FontWeight.Bold)
+                    Text("${block.estimatedMinutes} phút · Không tính vào tiến độ", color = customColors.mutedText)
+                }
+                Text(if (expanded) "▲" else "▼", color = EnergyOrange)
+            }
+            if (expanded) {
+                block.stepsVi.forEachIndexed { index, step ->
+                    Text("${index + 1}. $step", color = customColors.primaryText)
+                }
             }
         }
     }

@@ -39,6 +39,8 @@ sealed interface TodayUiState {
         val selectedTimeBudgetMinutes: Int? = null,
         val omittedExerciseCount: Int = 0,
         val canChangeTimeBudget: Boolean = true,
+        val warmUp: AdvisoryMovementBlockUi? = null,
+        val coolDown: AdvisoryMovementBlockUi? = null,
     ) : TodayUiState
 
     data class Recovery(
@@ -77,4 +79,12 @@ data class ExerciseSubstitutionCandidateUi(
     val equipment: List<Equipment>,
     val instructionsVi: List<String>,
     val restoresOriginal: Boolean,
+)
+
+data class AdvisoryMovementBlockUi(
+    val id: String,
+    val titleVi: String,
+    val stepsVi: List<String>,
+    val estimatedMinutes: Int,
+    val participatesInCompletion: Boolean = false,
 )

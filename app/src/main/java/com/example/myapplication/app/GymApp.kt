@@ -133,6 +133,7 @@ fun GymApp(container: AppContainer) {
                             cloudAiConsent = container.database.personalizationDao().observeProfile()
                                 .map { profile -> profile?.cloudAiConsent == true },
                             feedbackRepository = container.workoutFeedbackRepository,
+                            movementBlocks = container.catalogRepository.movementBlocks,
                         )
                     }
                 }
