@@ -975,6 +975,13 @@ fun BarcodeScannerDialog(
                         .border(2.dp, EnergyOrange, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
+                    BarcodeCameraPreview(
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                        onBarcodeScanned = { barcode ->
+                            onBarcodeScanned(barcode)
+                            onDismiss()
+                        }
+                    )
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
