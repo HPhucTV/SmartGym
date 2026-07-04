@@ -166,6 +166,7 @@ fun GymApp(container: AppContainer) {
                 onRequestSubstitution = todayViewModel::requestSubstitution,
                 onApplySubstitution = todayViewModel::applySubstitution,
                 onDismissSubstitution = todayViewModel::dismissSubstitution,
+                onApplyTimeBudget = todayViewModel::applyTimeBudget,
             )
         },
         progressContent = { onNavigateToCatalog ->

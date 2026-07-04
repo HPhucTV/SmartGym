@@ -28,4 +28,5 @@ data class WorkoutSessionEntity(
     val dueEpochDay: Long,
     val completedEpochDay: Long? = null,
     @ColumnInfo(defaultValue = "100") val volumeScalePercent: Int = 100,
+    val selectedTimeBudgetMinutes: Int? = null,
 )

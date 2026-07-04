@@ -238,6 +238,33 @@ class TodayViewModel(
         }
     }
 
+    fun applyTimeBudget(minutes: Int?) {
+        val state = _uiState.value as? TodayUiState.Workout ?: return
+        if (!state.canChangeTimeBudget || state.selectedTimeBudgetMinutes == minutes) return
+        viewModelScope.launch {
+            try {
+                when (repository.applyTimeBudget(state.sessionId, minutes)) {
+                    TimeBudgetResult.Applied -> Unit
+                    TimeBudgetResult.InvalidBudget -> operations.update {
+                        it.copy(interactionError = state.sessionId to "Thời lượng đã chọn không hợp lệ.")
+                    }
+                    TimeBudgetResult.HasCheckedExercises -> operations.update {
+                        it.copy(interactionError = state.sessionId to "Không thể đổi thời lượng sau khi đã bắt đầu tập.")
+                    }
+                    TimeBudgetResult.StaleSession -> operations.update {
+                        it.copy(interactionError = state.sessionId to "Buổi tập đã thay đổi. Vui lòng thử lại.")
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                operations.update {
+                    it.copy(interactionError = state.sessionId to "Không thể đổi thời lượng. Vui lòng thử lại.")
+                }
+            }
+        }
+    }
+
     fun completeWorkout() {
         val state = _uiState.value as? TodayUiState.Workout ?: return
         if (!state.canComplete || operations.value.completingSessionId != null ||
@@ -455,6 +482,9 @@ class TodayViewModel(
             isRefreshingCoach = refreshingCoach,
             goalId = goal.id,
             phase = phase,
+            selectedTimeBudgetMinutes = session.selectedTimeBudgetMinutes,
+            omittedExerciseCount = session.omittedExerciseCount,
+            canChangeTimeBudget = checked == 0 && pending.isEmpty() && ops.completingSessionId == null,
         )
     }
 }

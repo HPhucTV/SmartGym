@@ -15,6 +15,8 @@ data class WorkoutSession(
     val estimatedMinutes: Int,
     val dueEpochDay: Long,
     val exercises: List<WorkoutExercise>,
+    val selectedTimeBudgetMinutes: Int? = null,
+    val omittedExerciseCount: Int = 0,
 )
 
 data class WorkoutExercise(

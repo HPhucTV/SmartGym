@@ -86,6 +86,7 @@ interface WorkoutDao {
         SET originalExerciseId = COALESCE(originalExerciseId, exerciseId),
             exerciseId = :replacementExerciseId
         WHERE sessionId = :sessionId AND orderIndex = :orderIndex AND checked = 0
+          AND omittedByTimeBudget = 0
           AND EXISTS (
             SELECT 1 FROM workout_sessions target
             INNER JOIN goals target_goal ON target_goal.id = target.goalId
@@ -112,6 +113,7 @@ interface WorkoutDao {
         """
         UPDATE session_exercises SET checked = :checked
         WHERE sessionId = :sessionId AND orderIndex = :orderIndex
+          AND omittedByTimeBudget = 0
           AND EXISTS (
             SELECT 1 FROM workout_sessions target
             INNER JOIN goals target_goal ON target_goal.id = target.goalId
@@ -130,8 +132,22 @@ interface WorkoutDao {
     )
     suspend fun setCurrentExerciseChecked(sessionId: Long, orderIndex: Int, checked: Boolean): Int
 
-    @Query("SELECT COUNT(*) FROM session_exercises WHERE sessionId = :sessionId AND checked = 0")
+    @Query("SELECT COUNT(*) FROM session_exercises WHERE sessionId = :sessionId AND checked = 0 AND omittedByTimeBudget = 0")
     suspend fun countUnchecked(sessionId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM session_exercises WHERE sessionId = :sessionId AND checked = 1")
+    suspend fun countChecked(sessionId: Long): Int
+
+    @Query("UPDATE workout_sessions SET selectedTimeBudgetMinutes = :minutes WHERE id = :sessionId")
+    suspend fun updateSelectedTimeBudget(sessionId: Long, minutes: Int?): Int
+
+    @Query("UPDATE session_exercises SET omittedByTimeBudget = :omitted WHERE sessionId = :sessionId")
+    suspend fun setAllExercisesOmittedByTimeBudget(sessionId: Long, omitted: Boolean): Int
+
+    @Query(
+        "UPDATE session_exercises SET omittedByTimeBudget = 0 WHERE sessionId = :sessionId AND orderIndex IN (:orderIndices)",
+    )
+    suspend fun activateExercisesForTimeBudget(sessionId: Long, orderIndices: List<Int>): Int
 
     @Query("SELECT * FROM workout_sessions WHERE id = :sessionId LIMIT 1")
     suspend fun getSession(sessionId: Long): WorkoutSessionEntity?

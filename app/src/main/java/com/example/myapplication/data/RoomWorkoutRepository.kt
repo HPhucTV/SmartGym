@@ -15,6 +15,7 @@ import com.example.myapplication.core.model.trainingDaysMask
 import com.example.myapplication.core.program.AdaptiveProgramPlanner
 import com.example.myapplication.core.program.SchedulePlanner
 import com.example.myapplication.core.program.TrainingSchedule
+import com.example.myapplication.core.program.SessionTimeBudgetPlanner
 import com.example.myapplication.data.local.GoalEntity
 import com.example.myapplication.data.local.GymDatabase
 import com.example.myapplication.data.local.SessionExerciseEntity
@@ -152,6 +153,49 @@ class RoomWorkoutRepository(
         }
     }
 
+    override suspend fun applyTimeBudget(
+        sessionId: Long,
+        minutes: Int?,
+    ): TimeBudgetResult = database.withTransaction {
+        if (dao.getCurrentSessionId() != sessionId) {
+            return@withTransaction TimeBudgetResult.StaleSession
+        }
+        val session = dao.getSession(sessionId)
+            ?: return@withTransaction TimeBudgetResult.StaleSession
+        if (dao.countChecked(sessionId) > 0) {
+            return@withTransaction TimeBudgetResult.HasCheckedExercises
+        }
+        if (minutes != null && minutes !in setOf(15, 30, 45) && minutes != session.estimatedMinutes) {
+            return@withTransaction TimeBudgetResult.InvalidBudget
+        }
+
+        dao.updateSelectedTimeBudget(sessionId, minutes)
+        if (minutes == null || minutes >= session.estimatedMinutes) {
+            dao.setAllExercisesOmittedByTimeBudget(sessionId, false)
+        } else {
+            val rows = dao.getExercisesForSession(sessionId).sortedBy { it.orderIndex }
+            val selection = SessionTimeBudgetPlanner.select(
+                rows.map { row ->
+                    ExercisePrescription(
+                        exerciseId = row.exerciseId,
+                        sets = scaledSets(row.sets, session.volumeScalePercent),
+                        repsMin = row.repsMin,
+                        repsMax = row.repsMax,
+                        durationSeconds = row.durationSeconds,
+                        restSeconds = row.restSeconds,
+                    )
+                },
+                minutes,
+            )
+            dao.setAllExercisesOmittedByTimeBudget(sessionId, true)
+            dao.activateExercisesForTimeBudget(
+                sessionId,
+                selection.activeOrderIndices.map { rows[it].orderIndex },
+            )
+        }
+        TimeBudgetResult.Applied
+    }
+
     override suspend fun completeWorkout(
         sessionId: Long,
         completedEpochDay: Long,
@@ -213,7 +257,7 @@ class RoomWorkoutRepository(
         focusVi = session.focusVi,
         estimatedMinutes = session.estimatedMinutes,
         dueEpochDay = session.dueEpochDay,
-        exercises = exercises.sortedBy { it.orderIndex }.map { exercise ->
+        exercises = exercises.filterNot { it.omittedByTimeBudget }.sortedBy { it.orderIndex }.map { exercise ->
             WorkoutExercise(
                 orderIndex = exercise.orderIndex,
                 exerciseId = exercise.exerciseId,
@@ -233,6 +277,8 @@ class RoomWorkoutRepository(
                 checked = exercise.checked,
             )
         },
+        selectedTimeBudgetMinutes = session.selectedTimeBudgetMinutes,
+        omittedExerciseCount = exercises.count { it.omittedByTimeBudget },
     )
 }
 

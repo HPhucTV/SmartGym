@@ -77,6 +77,36 @@ class TodayViewModelTest {
         )
     }
 
+    @Test fun `time budget choices apply before first check and expose omission summary`() = runTest(dispatcher) {
+        val repository = FakeTodayRepository(
+            goal(),
+            workout().copy(selectedTimeBudgetMinutes = 15, omittedExerciseCount = 2),
+        )
+        val vm = TodayViewModel(repository, catalog) { 100L }
+        runCurrent()
+
+        val state = vm.uiState.value as TodayUiState.Workout
+        assertEquals(listOf(15, 30, 45, null), state.timeBudgetChoices)
+        assertEquals(15, state.selectedTimeBudgetMinutes)
+        assertEquals(2, state.omittedExerciseCount)
+        assertTrue(state.canChangeTimeBudget)
+
+        vm.applyTimeBudget(30)
+        advanceUntilIdle()
+        assertEquals(7L to 30, repository.timeBudgets.single())
+    }
+
+    @Test fun `time budget is locked after any exercise is checked`() = runTest(dispatcher) {
+        val repository = FakeTodayRepository(goal(), workout(checked = true))
+        val vm = TodayViewModel(repository, catalog) { 100L }
+        runCurrent()
+
+        assertFalse((vm.uiState.value as TodayUiState.Workout).canChangeTimeBudget)
+        vm.applyTimeBudget(15)
+        advanceUntilIdle()
+        assertTrue(repository.timeBudgets.isEmpty())
+    }
+
     @Test fun `shows both recovery modes goal complete and missing catalog error`() = runTest(dispatcher) {
         val repository = FakeTodayRepository(goal(RestDayMode.FULL_REST), workout(due = 101))
         val vm = TodayViewModel(repository, catalog) { 100 }; runCurrent()
@@ -275,6 +305,7 @@ private class FakeTodayRepository(goal: ActiveGoal?, workout: WorkoutSession?) :
     var cancelCompletion = false
     val completionArguments = mutableListOf<Pair<Long, Long>>()
     val substitutions = mutableListOf<Triple<Long, Int, String>>()
+    val timeBudgets = mutableListOf<Pair<Long, Int?>>()
     override fun observeActiveGoal(): Flow<ActiveGoal?> = active
     override fun observeCurrentWorkout(): Flow<WorkoutSession?> = current
     override fun observeCompletedWorkouts(): Flow<List<CompletedWorkout>> = flowOf(emptyList())
@@ -294,6 +325,10 @@ private class FakeTodayRepository(goal: ActiveGoal?, workout: WorkoutSession?) :
     ): ExerciseSubstitutionResult {
         substitutions += Triple(sessionId, orderIndex, replacementExerciseId)
         return ExerciseSubstitutionResult.Applied
+    }
+    override suspend fun applyTimeBudget(sessionId: Long, minutes: Int?): TimeBudgetResult {
+        timeBudgets += sessionId to minutes
+        return TimeBudgetResult.Applied
     }
     override suspend fun createGoal(config: GoalConfig, program: ProgramTemplate, startEpochDay: Long) = Unit
     override suspend fun archiveActiveGoal() = Unit

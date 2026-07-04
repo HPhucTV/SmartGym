@@ -48,6 +48,7 @@ fun TodayScreen(
     onRequestSubstitution: (Int) -> Unit = {},
     onApplySubstitution: (String) -> Unit = {},
     onDismissSubstitution: () -> Unit = {},
+    onApplyTimeBudget: (Int?) -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
 
@@ -70,6 +71,7 @@ fun TodayScreen(
                 onNavigateToNutrition = onNavigateToNutrition,
                 onRefreshCoachTip = onRefreshCoachTip,
                 onRequestSubstitution = onRequestSubstitution,
+                onApplyTimeBudget = onApplyTimeBudget,
             )
         }
 
@@ -482,6 +484,7 @@ private fun WorkoutContent(
     onNavigateToNutrition: () -> Unit,
     onRefreshCoachTip: () -> Unit,
     onRequestSubstitution: (Int) -> Unit,
+    onApplyTimeBudget: (Int?) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val customColors = colors.customColors
@@ -498,6 +501,38 @@ private fun WorkoutContent(
             // Header card
             item(key = "header") {
                 TodayHeaderCard(state, onNavigateToCatalog, onNavigateToNutrition)
+            }
+
+            item(key = "time-budget") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Thời lượng buổi tập",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = customColors.primaryText,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        state.timeBudgetChoices.forEach { minutes ->
+                            FilterChip(
+                                selected = state.selectedTimeBudgetMinutes == minutes,
+                                onClick = { onApplyTimeBudget(minutes) },
+                                enabled = state.canChangeTimeBudget,
+                                label = { Text(minutes?.let { "$it phút" } ?: "Đầy đủ") },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                    if (state.omittedExerciseCount > 0) {
+                        Text(
+                            "${state.omittedExerciseCount} bài phụ được lược bớt",
+                            color = customColors.mutedText,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
             }
 
             // AI Coach Tip card

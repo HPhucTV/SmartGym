@@ -19,7 +19,16 @@ interface WorkoutRepository {
         orderIndex: Int,
         replacementExerciseId: String,
     ): ExerciseSubstitutionResult = ExerciseSubstitutionResult.InvalidCandidate
+    suspend fun applyTimeBudget(sessionId: Long, minutes: Int?): TimeBudgetResult =
+        TimeBudgetResult.StaleSession
     suspend fun archiveActiveGoal()
+}
+
+sealed interface TimeBudgetResult {
+    data object Applied : TimeBudgetResult
+    data object InvalidBudget : TimeBudgetResult
+    data object HasCheckedExercises : TimeBudgetResult
+    data object StaleSession : TimeBudgetResult
 }
 
 sealed interface ExerciseSubstitutionResult {

@@ -172,6 +172,46 @@ class RoomWorkoutRepositoryTest {
         )
     }
 
+    @Test
+    fun timeBudget_omitsOrderedSuffix_andNullRestoresFullWorkout() = runTest {
+        val longExercises = List(4) { index ->
+            ExercisePrescription(if (index % 2 == 0) "squat" else "plank", 6, 12, 12, null, 90)
+        }
+        val longProgram = program().copy(
+            workouts = program().workouts.map { it.copy(exercises = longExercises) },
+        )
+        repository.createGoal(config(), longProgram, 100)
+        val current = requireNotNull(repository.observeCurrentWorkout().first())
+
+        assertEquals(TimeBudgetResult.Applied, repository.applyTimeBudget(current.id, 15))
+        val shortened = requireNotNull(repository.observeCurrentWorkout().first())
+        assertEquals(15, shortened.selectedTimeBudgetMinutes)
+        assertEquals(listOf(0), shortened.exercises.map { it.orderIndex })
+        assertEquals(3, shortened.omittedExerciseCount)
+        repository.setExerciseChecked(current.id, 3, true)
+        assertFalse(database.workoutDao().getExercisesForSession(current.id)[3].checked)
+
+        assertEquals(TimeBudgetResult.Applied, repository.applyTimeBudget(current.id, null))
+        val restored = requireNotNull(repository.observeCurrentWorkout().first())
+        assertNull(restored.selectedTimeBudgetMinutes)
+        assertEquals(listOf(0, 1, 2, 3), restored.exercises.map { it.orderIndex })
+        assertEquals(0, restored.omittedExerciseCount)
+    }
+
+    @Test
+    fun timeBudget_rejectsCheckedAndStaleSessions() = runTest {
+        repository.createGoal(config(), program(), 100)
+        val first = requireNotNull(repository.observeCurrentWorkout().first())
+        repository.setExerciseChecked(first.id, 0, true)
+
+        assertEquals(TimeBudgetResult.HasCheckedExercises, repository.applyTimeBudget(first.id, 15))
+        repository.setExerciseChecked(first.id, 0, false)
+        first.exercises.forEach { repository.setExerciseChecked(first.id, it.orderIndex, true) }
+        repository.completeWorkout(first.id, 100)
+
+        assertEquals(TimeBudgetResult.StaleSession, repository.applyTimeBudget(first.id, 15))
+    }
+
     private fun program(id: String = "program_a", threeSessions: Boolean = false): ProgramTemplate {
         val workouts = buildList {
             add(workout(0, 1, "A"))

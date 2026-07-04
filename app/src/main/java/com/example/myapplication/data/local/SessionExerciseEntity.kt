@@ -28,4 +28,5 @@ data class SessionExerciseEntity(
     val durationSeconds: Int?,
     val restSeconds: Int,
     val checked: Boolean = false,
+    val omittedByTimeBudget: Boolean = false,
 )

@@ -35,6 +35,10 @@ sealed interface TodayUiState {
         val goalId: Long = 0L,
         val phase: ProgramPhase = ProgramPhase.FOUNDATION,
         val substitution: ExerciseSubstitutionUi? = null,
+        val timeBudgetChoices: List<Int?> = listOf(15, 30, 45, null),
+        val selectedTimeBudgetMinutes: Int? = null,
+        val omittedExerciseCount: Int = 0,
+        val canChangeTimeBudget: Boolean = true,
     ) : TodayUiState
 
     data class Recovery(

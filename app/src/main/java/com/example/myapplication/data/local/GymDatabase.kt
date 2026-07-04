@@ -59,7 +59,7 @@ class PersonalizationTypeConverters {
         AchievementEntity::class,
         WorkoutFeedbackEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(WorkoutTypeConverters::class, PersonalizationTypeConverters::class)
@@ -70,6 +70,17 @@ abstract class GymDatabase : RoomDatabase() {
     abstract fun workoutFeedbackDao(): WorkoutFeedbackDao
 
     companion object {
+        val MIGRATION_7_8: Migration = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `session_exercises` ADD COLUMN `omittedByTimeBudget` INTEGER NOT NULL DEFAULT 0",
+                )
+                db.execSQL(
+                    "ALTER TABLE `workout_sessions` ADD COLUMN `selectedTimeBudgetMinutes` INTEGER",
+                )
+            }
+        }
+
         val MIGRATION_6_7: Migration = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
