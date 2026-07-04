@@ -57,6 +57,7 @@ data class ExerciseDefinition(
     val primaryMuscle: MuscleGroup,
     val secondaryMuscles: List<MuscleGroup> = emptyList(),
     val instructionsVi: List<String>,
+    val substituteIds: List<String> = emptyList(),
 )
 
 @Serializable

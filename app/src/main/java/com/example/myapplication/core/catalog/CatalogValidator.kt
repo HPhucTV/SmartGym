@@ -8,6 +8,7 @@ object CatalogValidator {
 
     fun validateExercises(exercises: List<ExerciseDefinition>): List<String> {
         val issues = mutableListOf<String>()
+        val exercisesById = exercises.associateBy(ExerciseDefinition::id)
 
         exercises.groupingBy { it.id }
             .eachCount()
@@ -34,6 +35,29 @@ object CatalogValidator {
             }
             if (exercise.equipment.isEmpty()) {
                 issues += "Exercise '${exercise.id}' must declare equipment"
+            }
+            exercise.substituteIds.groupingBy { it }.eachCount()
+                .filterValues { it > 1 }
+                .keys
+                .sorted()
+                .forEach { duplicate ->
+                    issues += "Exercise '${exercise.id}' has duplicate substitute '$duplicate'"
+                }
+            exercise.substituteIds.distinct().forEach { substituteId ->
+                when {
+                    substituteId == exercise.id -> {
+                        issues += "Exercise '${exercise.id}' cannot substitute itself"
+                    }
+                    substituteId !in exercisesById -> {
+                        issues += "Exercise '${exercise.id}': Unknown substitute '$substituteId'"
+                    }
+                    exercisesById.getValue(substituteId).primaryMuscle != exercise.primaryMuscle -> {
+                        issues += "Exercise '${exercise.id}' substitute '$substituteId' must use the same primary muscle"
+                    }
+                    exercisesById.getValue(substituteId).movementPattern != exercise.movementPattern -> {
+                        issues += "Exercise '${exercise.id}' substitute '$substituteId' must use the same movement pattern"
+                    }
+                }
             }
         }
 

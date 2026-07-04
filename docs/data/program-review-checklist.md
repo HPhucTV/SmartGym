@@ -10,6 +10,14 @@
 - Cùng một cấu hình luôn tạo cùng snapshot buổi tập.
 - Trước khi phát hành cần rà thủ công đầu ra 30, 45, 60, 75 và 90 phút.
 
+## Rà soát bài thay thế
+
+- `substituteIds` chỉ liên kết hai bài có cùng nhóm cơ chính và mẫu chuyển động.
+- Liên kết luôn đối ứng, không tự trỏ và không trỏ tới ID ngoài catalog.
+- Runtime tiếp tục lọc theo thiết bị của hồ sơ và ưu tiên cùng trình độ.
+- Các nhóm đã rà gồm squat, lunge, hinge, đẩy/kéo thân trên, core và cardio.
+- Thay bài giữ nguyên prescription của buổi tập; chức năng không tạo workout ngẫu nhiên.
+
 - Ngày rà soát dự án: **2026-06-30**
 - Phạm vi: 6 chương trình, 116 buổi tập đã mở rộng theo tuần trong `programs.json`.
 - Trạng thái rà soát: kiểm tra tự động và kiểm tra bằng agent đã đạt; chưa có người dùng hoặc chuyên gia bên ngoài rà soát từng buổi.
