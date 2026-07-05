@@ -32,6 +32,8 @@ fun OnboardingRoute(
     programs: List<ProgramTemplate>,
     workoutRepository: WorkoutRepository,
     replacementMode: Boolean = false,
+    onCancel: () -> Unit = {},
+    onGoalCreated: () -> Unit = {},
 ) {
     val factory = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -40,6 +42,14 @@ fun OnboardingRoute(
     }
     val vm: OnboardingViewModel = viewModel(factory = factory)
     val state by vm.uiState.collectAsStateWithLifecycle()
+
+    androidx.compose.runtime.LaunchedEffect(state) {
+        val currentState = state
+        if (currentState is OnboardingUiState.Created) {
+            onGoalCreated()
+        }
+    }
+
     OnboardingScreen(
         state = state,
         replacementMode = replacementMode,
@@ -50,7 +60,14 @@ fun OnboardingRoute(
         onSessionDurationSelected = vm::selectSessionDuration,
         onRestDayModeSelected = vm::selectRestDayMode,
         onNext = vm::next,
-        onBack = vm::back,
+        onBack = {
+            val currentState = state
+            if (currentState is OnboardingUiState.Editing && currentState.step == OnboardingStep.GOAL) {
+                onCancel()
+            } else {
+                vm.back()
+            }
+        },
         onCreateGoal = vm::createGoal,
     )
 }
@@ -168,7 +185,7 @@ private fun EditingContent(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (state.step != OnboardingStep.GOAL) {
+                if (state.step != OnboardingStep.GOAL || replacementMode) {
                     OutlinedButton(
                         onClick = onBack,
                         enabled = !state.isSaving,
@@ -176,7 +193,9 @@ private fun EditingContent(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = EnergyOrange),
                         border = BorderStroke(1.dp, EnergyOrange),
                         modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                    ) { Text("Quay lại") }
+                    ) {
+                        Text(if (state.step == OnboardingStep.GOAL) "Hủy" else "Quay lại")
+                    }
                 }
                 Button(
                     onClick = if (state.step == OnboardingStep.REVIEW) onCreate else onNext,

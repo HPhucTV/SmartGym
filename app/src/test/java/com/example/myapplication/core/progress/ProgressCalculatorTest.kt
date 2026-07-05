@@ -42,11 +42,22 @@ class ProgressCalculatorTest {
     }
 
     @Test
-    fun weeklyStreakUsesIsoWeeksAcrossYearBoundaryAndIgnoresDuplicateDays() {
+    fun weeklyStreakUsesIsoWeeksAcrossYearBoundaryAndRetainsMultipleSessions() {
         val dec29 = LocalDate.of(2025, 12, 29).toEpochDay()
         val completions = listOf(dec29, dec29, dec29 + 2, dec29 + 7, dec29 + 9)
 
         assertEquals(2, ProgressCalculator.weeklyStreak(completions, 2, dec29 + 13))
+    }
+
+    @Test
+    fun weeklyStreakCountsMultipleSessionsOnSameDay() {
+        val monday = LocalDate.of(2026, 6, 8).toEpochDay()
+        // 2 sessions on Monday, 1 session on Wednesday -> 3 sessions total
+        val completions = listOf(monday, monday, monday + 2)
+
+        // Target is 3 sessions per week. If duplicates were ignored, count would be 2 (not qualified).
+        // Since they count, count is 3 (qualified).
+        assertEquals(1, ProgressCalculator.weeklyStreak(completions, 3, monday + 6))
     }
 
     @Test

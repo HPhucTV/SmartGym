@@ -12,12 +12,16 @@ internal suspend fun runWorkoutReminder(
     val settings = try { loadSettings() }
     catch (cancelled: CancellationException) { throw cancelled }
     catch (error: Throwable) { log(error); null }
-    if (settings?.reminderEnabled == true) try { schedule(settings.reminderHour, settings.reminderMinute) }
-    catch (cancelled: CancellationException) { throw cancelled }
-    catch (error: Throwable) { log(error) }
-    try { notify() }
-    catch (cancelled: CancellationException) { throw cancelled }
-    catch (error: Throwable) { log(error) }
+    if (settings?.reminderEnabled == true) {
+        try { schedule(settings.reminderHour, settings.reminderMinute) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Throwable) { log(error) }
+    }
+    if (settings == null || settings.reminderEnabled) {
+        try { notify() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Throwable) { log(error) }
+    }
 }
 
 internal suspend fun runBootReschedule(

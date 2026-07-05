@@ -39,16 +39,59 @@ class ReminderRecoveryTest {
         runBootReschedule({ Settings(reminderEnabled = true) }, { _, _ -> error("alarm") }, { calls += "log" })
         assertEquals(listOf("log"), calls)
     }
-    @Test fun `cancellation from reminder callbacks is rethrown and never logged`() = runTest {
-        suspend fun assertCancelled(block: suspend (MutableList<String>) -> Unit) {
-            val calls = mutableListOf<String>()
-            try { block(calls); fail("expected cancellation") }
-            catch (_: CancellationException) { assertFalse(calls.contains("log")) }
+
+    @Test fun `workout does not notify when settings load succeeds and reminder is disabled`() = runTest {
+        val calls = mutableListOf<String>()
+        runWorkoutReminder(
+            loadSettings = { Settings(reminderEnabled = false) },
+            schedule = { _, _ -> calls += "schedule" },
+            notify = { calls += "notify" },
+            log = { calls += "log" }
+        )
+        assertEquals(emptyList<String>(), calls)
+    }
+    @Test fun `cancellation from settings load is rethrown and never logged`() = runTest {
+        val calls = mutableListOf<String>()
+        try {
+            runWorkoutReminder({ throw CancellationException("settings") }, { _, _ -> }, {}, { calls += "log" })
+            fail("expected cancellation from settings load")
+        } catch (e: CancellationException) {
+            assertEquals("settings", e.message)
+            assertFalse("should not log cancellation", calls.contains("log"))
         }
-        assertCancelled { calls -> runWorkoutReminder({ throw CancellationException("settings") }, { _, _ -> }, {}, { calls += "log" }) }
-        assertCancelled { calls -> runWorkoutReminder({ Settings(reminderEnabled = true) }, { _, _ -> throw CancellationException("schedule") }, {}, { calls += "log" }) }
-        assertCancelled { calls -> runWorkoutReminder({ Settings() }, { _, _ -> }, { throw CancellationException("notify") }, { calls += "log" }) }
-        assertCancelled { calls -> runBootReschedule({ throw CancellationException("boot") }, { _, _ -> }, { calls += "log" }) }
+    }
+
+    @Test fun `cancellation from schedule is rethrown and never logged`() = runTest {
+        val calls = mutableListOf<String>()
+        try {
+            runWorkoutReminder({ Settings(reminderEnabled = true) }, { _, _ -> throw CancellationException("schedule") }, {}, { calls += "log" })
+            fail("expected cancellation from schedule")
+        } catch (e: CancellationException) {
+            assertEquals("schedule", e.message)
+            assertFalse("should not log cancellation", calls.contains("log"))
+        }
+    }
+
+    @Test fun `cancellation from notify is rethrown and never logged`() = runTest {
+        val calls = mutableListOf<String>()
+        try {
+            runWorkoutReminder({ Settings(reminderEnabled = true) }, { _, _ -> }, { throw CancellationException("notify") }, { calls += "log" })
+            fail("expected cancellation from notify")
+        } catch (e: CancellationException) {
+            assertEquals("notify", e.message)
+            assertFalse("should not log cancellation", calls.contains("log"))
+        }
+    }
+
+    @Test fun `cancellation from boot reschedule is rethrown and never logged`() = runTest {
+        val calls = mutableListOf<String>()
+        try {
+            runBootReschedule({ throw CancellationException("boot") }, { _, _ -> }, { calls += "log" })
+            fail("expected cancellation from boot reschedule")
+        } catch (e: CancellationException) {
+            assertEquals("boot", e.message)
+            assertFalse("should not log cancellation", calls.contains("log"))
+        }
     }
 
     @Test fun `DST gap resolves exactly and overlap chooses next valid instant`() {

@@ -91,6 +91,8 @@ fun GymApp(container: AppContainer) {
                 programs = container.catalogRepository.programs,
                 workoutRepository = container.workoutRepository,
                 replacementMode = replacing,
+                onCancel = { replacementMode = false },
+                onGoalCreated = { replacementMode = false },
             )
         },
         homeContent = { onNavigateToWorkouts, onNavigateToNutrition, onNavigateToCheckIn, onNavigateToRecommendations, onNavigateToAchievements ->
@@ -386,14 +388,18 @@ fun GymApp(
     recommendationsContent: @Composable (onBack: () -> Unit) -> Unit = {},
     achievementsContent: @Composable (onBack: () -> Unit) -> Unit = {},
 ) {
-    when (rootState) {
-        GymRootState.Loading -> LoadingScreen()
-        GymRootState.NoGoal -> noGoalContent(replacementMode)
-        GymRootState.ActiveGoal -> ActiveGoalNavigation(
-            homeContent, todayContent, progressContent, settingsContent,
-            catalogContent, nutritionContent, profileContent, checkinContent, recommendationsContent,
-            achievementsContent
-        )
+    if (replacementMode) {
+        noGoalContent(true)
+    } else {
+        when (rootState) {
+            GymRootState.Loading -> LoadingScreen()
+            GymRootState.NoGoal -> noGoalContent(false)
+            GymRootState.ActiveGoal -> ActiveGoalNavigation(
+                homeContent, todayContent, progressContent, settingsContent,
+                catalogContent, nutritionContent, profileContent, checkinContent, recommendationsContent,
+                achievementsContent
+            )
+        }
     }
 }
 

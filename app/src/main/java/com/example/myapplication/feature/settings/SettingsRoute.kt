@@ -53,7 +53,13 @@ suspend fun consumeSettingsEvents(
         when (event) {
             SettingsEvent.RequestNotificationPermission -> onRequestNotificationPermission()
             is SettingsEvent.GoToOnboarding -> {
-                try { onNavigateToOnboarding(event.replacing) } finally { event.acknowledge() }
+                try {
+                    onNavigateToOnboarding(event.replacing)
+                    event.acknowledge()
+                } catch (e: Throwable) {
+                    event.fail(e)
+                    throw e
+                }
             }
         }
     }

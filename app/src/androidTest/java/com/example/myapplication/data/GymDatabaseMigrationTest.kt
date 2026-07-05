@@ -273,6 +273,31 @@ class GymDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun migration_9_10_preservesTemplatesAndCreatesEmptyOverrides() {
+        helper.createDatabase(TEST_DATABASE, 9).apply {
+            execSQL(
+                """
+                INSERT INTO meal_templates (
+                    id, nameVi, calories, proteinGrams, carbsGrams, fatGrams, updatedAtEpochMillis
+                ) VALUES (7, 'Bữa quen', 400, 25, 45, 10, 1)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        helper.runMigrationsAndValidate(
+            TEST_DATABASE,
+            10,
+            true,
+            GymDatabase.MIGRATION_9_10,
+        ).use { migrated ->
+            assertEquals(1, migrated.singleInt("SELECT COUNT(*) FROM meal_templates"))
+            assertEquals(400, migrated.singleInt("SELECT calories FROM meal_templates WHERE id = 7"))
+            assertEquals(0, migrated.singleInt("SELECT COUNT(*) FROM user_food_overrides"))
+        }
+    }
+
     private fun SupportSQLiteDatabase.singleInt(sql: String): Int = query(sql).use { cursor ->
         check(cursor.moveToFirst())
         cursor.getInt(0)

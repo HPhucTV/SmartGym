@@ -54,11 +54,13 @@ class WeeklyAdaptationCoordinatorTest {
             profile = profile(),
             daysSinceLastCalorieDecision = 8,
             daysSinceLastWorkoutDecision = 8,
+            missedSessions = 2,
         )
 
         val result = WeeklySnapshotAssembler.build(inputs)
 
         assertEquals(2, result.completedSessionsThisWeek)
+        assertEquals(2, result.missedSessions)
         assertEquals(
             listOf(WorkoutDifficulty.RIGHT, WorkoutDifficulty.HARD),
             result.lastDifficulties.map { it.difficulty },

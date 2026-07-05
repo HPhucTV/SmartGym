@@ -1070,7 +1070,6 @@ fun BarcodeCameraPreview(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val executor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
 
     AndroidView(
@@ -1079,37 +1078,42 @@ fun BarcodeCameraPreview(
                 scaleType = PreviewView.ScaleType.FILL_CENTER
             }
 
-            cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
-                val preview = Preview.Builder().build().also {
-                    it.surfaceProvider = previewView.surfaceProvider
-                }
+            try {
+                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                cameraProviderFuture.addListener({
+                    try {
+                        val cameraProvider = cameraProviderFuture.get()
+                        val preview = Preview.Builder().build().also {
+                            it.surfaceProvider = previewView.surfaceProvider
+                        }
 
-                val imageAnalysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-                    .also {
-                        it.setAnalyzer(executor, BarcodeAnalyzer { barcode ->
-                            previewView.post {
-                                onBarcodeScanned(barcode)
+                        val imageAnalysis = ImageAnalysis.Builder()
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
+                            .also {
+                                it.setAnalyzer(executor, BarcodeAnalyzer { barcode ->
+                                    previewView.post {
+                                        onBarcodeScanned(barcode)
+                                    }
+                                })
                             }
-                        })
+
+                        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                        cameraProvider.unbindAll()
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            preview,
+                            imageAnalysis
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("BarcodeCameraPreview", "Camera initialization or binding failed", e)
                     }
-
-                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-                try {
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        cameraSelector,
-                        preview,
-                        imageAnalysis
-                    )
-                } catch (e: Exception) {
-                    android.util.Log.e("BarcodeCameraPreview", "Camera binding failed", e)
-                }
-            }, ContextCompat.getMainExecutor(context))
+                }, ContextCompat.getMainExecutor(ctx))
+            } catch (e: Exception) {
+                android.util.Log.e("BarcodeCameraPreview", "Failed to get ProcessCameraProvider", e)
+            }
 
             previewView
         },
@@ -1131,31 +1135,36 @@ private class BarcodeAnalyzer(
     private var lastScanTime = 0L
 
     override fun analyze(imageProxy: ImageProxy) {
-        val mediaImage = imageProxy.image
-        if (mediaImage != null) {
-            val now = System.currentTimeMillis()
-            if (isCooldown && now - lastScanTime < 3000) {
-                imageProxy.close()
-                return
-            }
-            
-            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-            scanner.process(image)
-                .addOnSuccessListener { barcodes ->
-                    val barcode = barcodes.firstOrNull()?.rawValue
-                    if (barcode != null) {
-                        isCooldown = true
-                        lastScanTime = now
-                        onBarcodeScanned(barcode)
-                    }
-                }
-                .addOnFailureListener {
-                    // Ignore errors
-                }
-                .addOnCompleteListener {
+        try {
+            val mediaImage = imageProxy.image
+            if (mediaImage != null) {
+                val now = System.currentTimeMillis()
+                if (isCooldown && now - lastScanTime < 3000) {
                     imageProxy.close()
+                    return
                 }
-        } else {
+                
+                val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+                scanner.process(image)
+                    .addOnSuccessListener { barcodes ->
+                        val barcode = barcodes.firstOrNull()?.rawValue
+                        if (barcode != null) {
+                            isCooldown = true
+                            lastScanTime = now
+                            onBarcodeScanned(barcode)
+                        }
+                    }
+                    .addOnFailureListener {
+                        // Ignore errors
+                    }
+                    .addOnCompleteListener {
+                        imageProxy.close()
+                    }
+            } else {
+                imageProxy.close()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("BarcodeAnalyzer", "Failed to analyze image", e)
             imageProxy.close()
         }
     }

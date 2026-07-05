@@ -50,6 +50,7 @@ data class WeeklySnapshotInputs(
     val profile: PersonalProfile,
     val daysSinceLastCalorieDecision: Int,
     val daysSinceLastWorkoutDecision: Int,
+    val missedSessions: Int = 0,
 )
 
 object WeeklySnapshotAssembler {
@@ -93,7 +94,7 @@ object WeeklySnapshotAssembler {
             trackedDays = trackedDays.size,
             completedSessionsThisWeek = completedThisWeek,
             scheduledSessionsThisWeek = inputs.goal.config.sessionsPerWeek,
-            missedSessions = 0,
+            missedSessions = inputs.missedSessions,
             profileAgeYears = Period.between(
                 LocalDate.ofEpochDay(inputs.profile.birthDateEpochDay),
                 currentDate,
@@ -120,6 +121,9 @@ class RoomWeeklySnapshotProvider(
         val currentTarget = nutritionRepository.observeDay(currentEpochDay).first().target ?: return null
         val rangeStart = Math.subtractExact(currentEpochDay, 6L)
         val decisions = personalizationDao.decisionHistoryNow()
+        val allSessions = workoutRepository.observeWorkoutHistory().first().filter { it.goalId == goal.id }
+        val missedCount = allSessions.count { it.completedEpochDay == null && it.dueEpochDay < currentEpochDay }
+
         return WeeklySnapshotAssembler.build(
             WeeklySnapshotInputs(
                 currentEpochDay = currentEpochDay,
@@ -154,6 +158,7 @@ class RoomWeeklySnapshotProvider(
                             it.kind == com.example.myapplication.core.adaptation.AdaptationKind.DELOAD_WEEK
                     }.maxOfOrNull { it.createdAtEpochMillis },
                 ),
+                missedSessions = missedCount,
             ),
         )
     }

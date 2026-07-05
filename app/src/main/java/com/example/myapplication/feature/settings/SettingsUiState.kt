@@ -34,6 +34,7 @@ sealed interface SettingsEvent {
         private val consumed: CompletableDeferred<Unit> = CompletableDeferred(),
     ) : SettingsEvent {
         internal fun acknowledge() { consumed.complete(Unit) }
+        internal fun fail(throwable: Throwable) { consumed.completeExceptionally(throwable) }
         internal suspend fun awaitAcknowledgement() { consumed.await() }
         override fun equals(other: Any?) = other is GoToOnboarding && replacing == other.replacing
         override fun hashCode() = replacing.hashCode()

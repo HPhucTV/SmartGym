@@ -31,7 +31,6 @@ object ProgressCalculator {
 
         val completionsByWeek = completedEpochDays
             .asSequence()
-            .distinct()
             .map(::mondayOfWeek)
             .groupingBy { it }
             .eachCount()

@@ -53,9 +53,27 @@ function removeVietnameseTones(str) {
 
 function findDatabaseFood(componentName) {
   if (!componentName) return null;
-  const normName = removeVietnameseTones(componentName);
+  const normName = removeVietnameseTones(componentName).trim();
+
+  // 1. First pass: Exact match
   for (const key of Object.keys(vietnameseFoodDatabase)) {
-    const normKey = removeVietnameseTones(key);
+    const normKey = removeVietnameseTones(key).trim();
+    if (normName === normKey) {
+      return vietnameseFoodDatabase[key];
+    }
+  }
+
+  // 2. Second pass: Prevent matching generic short words to specific multi-word dishes
+  const genericShortWords = ["thit", "ca", "trung", "rau", "com"];
+  if (genericShortWords.includes(normName)) {
+    if (normName === "com") return vietnameseFoodDatabase["cơm trắng"];
+    if (normName === "rau") return vietnameseFoodDatabase["rau luộc"];
+    return null;
+  }
+
+  // 3. Third pass: Substring matching for longer or more specific terms
+  for (const key of Object.keys(vietnameseFoodDatabase)) {
+    const normKey = removeVietnameseTones(key).trim();
     if (normName.includes(normKey) || normKey.includes(normName)) {
       return vietnameseFoodDatabase[key];
     }
@@ -380,8 +398,87 @@ const localBarcodeDatabase = {
     calculationProcess: "Tra cứu offline: Gói 85g",
     confidence: 1.0,
     needsUserConfirmation: false
+  },
+  "8935049501503": {
+    dishName: "Coca-Cola Original Taste 320ml (Mã vạch)",
+    totalCalories: 134,
+    proteinGrams: 0,
+    carbsGrams: 34,
+    fatGrams: 0,
+    advice: "Nước ngọt có gas chứa lượng đường tinh luyện cao. Nên hạn chế khi giảm cân.",
+    constituents: [],
+    sweatPayment: { exerciseId: "bodyweight_squat", exerciseName: "Squat không tạ", extraSets: 1 },
+    calculationProcess: "Tra cứu offline: Lon 320ml (Dinh dưỡng: 42kcal/100ml)",
+    confidence: 1.0,
+    needsUserConfirmation: false
+  },
+  "8934588232220": {
+    dishName: "Nước tăng lực Sting Dâu lon 330ml (Mã vạch)",
+    totalCalories: 242,
+    proteinGrams: 0,
+    carbsGrams: 60,
+    fatGrams: 0,
+    advice: "Hàm lượng đường và caffeine cao. Tránh uống vào buổi tối muộn gây mất ngủ.",
+    constituents: [],
+    sweatPayment: { exerciseId: "bodyweight_squat", exerciseName: "Squat không tạ", extraSets: 2 },
+    calculationProcess: "Tra cứu offline: Lon 330ml (Dinh dưỡng: ~73kcal/100ml)",
+    confidence: 1.0,
+    needsUserConfirmation: false
+  },
+  "8934614030141": {
+    dishName: "Sữa đậu nành Fami Nguyên chất 200ml (Mã vạch)",
+    totalCalories: 116,
+    proteinGrams: 6,
+    carbsGrams: 16,
+    fatGrams: 3,
+    advice: "Nguồn đạm thực vật lành mạnh và chất béo tốt từ đậu nành.",
+    constituents: [],
+    sweatPayment: null,
+    calculationProcess: "Tra cứu offline: Hộp 200ml (Dinh dưỡng: 58kcal/100ml)",
+    confidence: 1.0,
+    needsUserConfirmation: false
+  },
+  "8934673606820": {
+    dishName: "Sữa chua ăn Vinamilk có đường 100g (Mã vạch)",
+    totalCalories: 105,
+    proteinGrams: 4,
+    carbsGrams: 16,
+    fatGrams: 3,
+    advice: "Cung cấp lợi khuẩn tốt cho hệ tiêu hóa và hỗ trợ hấp thu dưỡng chất tốt hơn.",
+    constituents: [],
+    sweatPayment: null,
+    calculationProcess: "Tra cứu offline: Hộp 100g",
+    confidence: 1.0,
+    needsUserConfirmation: false
+  },
+  "8936036020380": {
+    dishName: "Bánh Orion ChocoPie 33g (Mã vạch)",
+    totalCalories: 140,
+    proteinGrams: 2,
+    carbsGrams: 22,
+    fatGrams: 6,
+    advice: "Bánh ngọt chứa lượng đường và chất béo cao. Ăn một lượng vừa phải sau tập để bổ sung năng lượng nhanh.",
+    constituents: [],
+    sweatPayment: { exerciseId: "bodyweight_squat", exerciseName: "Squat không tạ", extraSets: 1 },
+    calculationProcess: "Tra cứu offline: Tính cho 1 chiếc bánh 33g trong hộp 12 gói",
+    confidence: 1.0,
+    needsUserConfirmation: false
   }
 };
+
+// Load offline dataset of Vietnamese products
+let offlineBarcodeDatabase = {};
+try {
+  const datasetPath = path.join(__dirname, 'vietnam_products.json');
+  if (fs.existsSync(datasetPath)) {
+    offlineBarcodeDatabase = JSON.parse(fs.readFileSync(datasetPath, 'utf8'));
+    console.log(`Successfully loaded ${Object.keys(offlineBarcodeDatabase).length} offline Vietnamese products from vietnam_products.json`);
+  } else {
+    console.log('Offline Vietnamese products dataset file (vietnam_products.json) not found.');
+  }
+} catch (e) {
+  console.error('Failed to load offline products dataset:', e);
+}
 
 app.get('/api/barcode/:code', async (req, res) => {
   try {
@@ -396,26 +493,49 @@ app.get('/api/barcode/:code', async (req, res) => {
       return res.json(localBarcodeDatabase[code]);
     }
 
+    // 1b. Check loaded offline dataset
+    if (offlineBarcodeDatabase[code]) {
+      console.log(`Barcode ${code} found in offline dataset.`);
+      return res.json(offlineBarcodeDatabase[code]);
+    }
+
     // 2. Query Open Food Facts API online
     console.log(`Querying Open Food Facts for barcode: ${code}`);
     const offUrl = `https://world.openfoodfacts.org/api/v2/product/${code}.json`;
-    const response = await fetch(offUrl, {
-      headers: {
-        'User-Agent': 'GymAppCalorieCalculator - Android - Version 1.0'
+    
+    let productData = null;
+    try {
+      const response = await fetch(offUrl, {
+        headers: {
+          'User-Agent': 'GymAppCalorieCalculator - Android - Version 1.0'
+        }
+      });
+      if (response.ok) {
+        productData = await response.json();
       }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Open Food Facts API returned status ${response.status}`);
+    } catch (e) {
+      console.error('Failed to fetch from Open Food Facts:', e);
     }
 
-    const data = await response.json();
-    if (data.status !== 1 || !data.product) {
-      console.log(`Barcode ${code} not found on Open Food Facts.`);
-      return res.status(404).json({ error: `Mã vạch ${code} không tìm thấy trên hệ thống cơ sở dữ liệu.` });
+    if (!productData || productData.status !== 1 || !productData.product) {
+      console.log(`Barcode ${code} not resolved online. Returning editable fallback.`);
+      return res.json({
+        dishName: `Mã vạch: ${code}`,
+        totalCalories: 0,
+        proteinGrams: 0,
+        carbsGrams: 0,
+        fatGrams: 0,
+        fitnessScore: 5,
+        advice: "Mã vạch này chưa có trong cơ sở dữ liệu. Vui lòng tự nhập thông tin dinh dưỡng của món ăn.",
+        constituents: [],
+        sweatPayment: null,
+        calculationProcess: "Không tìm thấy thông tin trực tuyến. Bạn có thể tự điền thông số từ nhãn dinh dưỡng bao bì.",
+        confidence: 0.0,
+        needsUserConfirmation: true
+      });
     }
 
-    const product = data.product;
+    const product = productData.product;
     const dishName = product.product_name_vi || product.product_name || `Sản phẩm (${code})`;
     const nutriments = product.nutriments || {};
 

@@ -156,16 +156,14 @@ class SettingsViewModel(
         saving.value = true; confirmation.value = PendingConfirmation.NONE
         viewModelScope.launch {
             val replacing = action == PendingConfirmation.REPLACE
-            var modeHoisted = false
             try {
                 navigateAndAwait(replacing)
-                modeHoisted = replacing
                 workoutRepository.archiveActiveGoal()
             } catch (cancelled: CancellationException) {
-                if (modeHoisted) resetReplacementMode()
+                if (replacing) resetReplacementMode()
                 throw cancelled
             } catch (_: Exception) {
-                if (modeHoisted) resetReplacementMode()
+                if (replacing) resetReplacementMode()
                 message.value = "Không thể cập nhật mục tiêu. Vui lòng thử lại."
             } finally { saving.value = false }
         }
