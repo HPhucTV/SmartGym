@@ -121,11 +121,14 @@ class TodayViewModel(
                 restDayOverride,
                 soreMusclesFlow
             ) { array ->
+                @Suppress("UNCHECKED_CAST")
                 val goal = array[0] as ActiveGoal?
+                @Suppress("UNCHECKED_CAST")
                 val session = array[1] as WorkoutSession?
                 val day = array[2] as Long
                 val ops = array[3] as Operations
                 val rest = array[4] as RestDayMode?
+                @Suppress("UNCHECKED_CAST")
                 val soreMuscles = array[5] as Set<String>
                 ActiveGoalFlowBundle(goal, session, day, ops, rest, soreMuscles)
             }
