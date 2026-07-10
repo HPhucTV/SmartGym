@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +52,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import java.time.LocalDate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 
 sealed interface GymRootState {
     data object Loading : GymRootState
@@ -60,6 +63,7 @@ sealed interface GymRootState {
 
 @Composable
 fun GymApp(container: AppContainer) {
+    val androidContext = LocalContext.current
     val rootStateFlow = remember(container.workoutRepository) {
         container.workoutRepository.observeActiveGoal()
             .map { goal -> if (goal == null) GymRootState.NoGoal else GymRootState.ActiveGoal }
@@ -231,6 +235,7 @@ fun GymApp(container: AppContainer) {
             )
         },
         nutritionContent = { onBack ->
+            val coroutineScope = rememberCoroutineScope()
             val factory = remember(container) {
                 viewModelFactory {
                     initializer {
@@ -275,6 +280,20 @@ fun GymApp(container: AppContainer) {
                 onCancelRenameTemplate = nutritionViewModel::cancelRenameTemplate,
                 onConfirmRenameTemplate = nutritionViewModel::confirmRenameTemplate,
                 onImportFile = nutritionViewModel::importNutritionFile,
+                onExportCatalog = { uri ->
+                    coroutineScope.launch {
+                        try {
+                            val bytes = nutritionViewModel.exportFoodCatalogToXlsx()
+                            androidContext.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                                outputStream.write(bytes)
+                            }
+                            android.widget.Toast.makeText(androidContext, "Đã lưu danh mục thực phẩm hiện tại!", android.widget.Toast.LENGTH_LONG).show()
+                        } catch (e: Exception) {
+                            android.util.Log.e("GymApp", "Failed to export catalog", e)
+                            android.widget.Toast.makeText(androidContext, "Lỗi khi lưu: ${e.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    }
+                },
                 onSearchCatalog = nutritionViewModel::searchFoodCatalog,
                 onClearCatalog = nutritionViewModel::clearFoodCatalog,
                 onAddFoodFromCatalog = nutritionViewModel::addFoodFromCatalog,

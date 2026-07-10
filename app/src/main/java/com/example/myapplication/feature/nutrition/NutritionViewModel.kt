@@ -644,6 +644,14 @@ class NutritionViewModel(
         }
     }
 
+    suspend fun exportFoodCatalogToXlsx(): ByteArray {
+        val dao = foodCatalogDao ?: return ByteArray(0)
+        val items = kotlinx.coroutines.withContext(ioDispatcher) {
+            dao.getAllNow()
+        }
+        return com.example.myapplication.core.nutrition.NutritionXlsxWriter.write(items)
+    }
+
     fun searchFoodCatalog(query: String) {
         searchQueryState.value = query
     }

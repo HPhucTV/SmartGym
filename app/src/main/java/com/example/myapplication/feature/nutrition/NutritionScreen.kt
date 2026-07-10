@@ -80,6 +80,7 @@ fun NutritionScreen(
     onCancelRenameTemplate: () -> Unit = {},
     onConfirmRenameTemplate: () -> Unit = {},
     onImportFile: (String, ByteArray) -> Unit = { _, _ -> },
+    onExportCatalog: (Uri) -> Unit = {},
     onSearchCatalog: (String) -> Unit = {},
     onClearCatalog: () -> Unit = {},
     onAddFoodFromCatalog: (FoodCatalogEntity, Double) -> Unit = { _, _ -> },
@@ -128,6 +129,14 @@ fun NutritionScreen(
                 android.util.Log.e("NutritionScreen", "Failed to save template file", e)
                 android.widget.Toast.makeText(context, "Lỗi khi tải tệp mẫu: ${e.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
             }
+        }
+    }
+
+    val exportCatalogLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            onExportCatalog(uri)
         }
     }
 
@@ -305,23 +314,33 @@ fun NutritionScreen(
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Tổng dinh dưỡng đã nạp:",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = customColors.primaryText
+                                        )
+                                        Text(
+                                            text = "$totalCal kcal",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = EnergyOrange
+                                        )
+                                    }
                                     Text(
-                                        text = "Tổng dinh dưỡng đã nạp:",
+                                        text = "P: ${totalP}g   •   C: ${totalC}g   •   F: ${totalF}g",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = customColors.primaryText
-                                    )
-                                    Text(
-                                        text = "$totalCal kcal\nP: ${totalP}g  C: ${totalC}g  F: ${totalF}g",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = EnergyOrange,
-                                        textAlign = TextAlign.End
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = customColors.mutedText
                                     )
                                 }
                             }
@@ -587,13 +606,25 @@ fun NutritionScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = customColors.mutedText
                                     )
-                                    Text(
-                                        "Đặt lại danh mục",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.error,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.clickable { onClearCatalog() }
-                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            "Tải Excel hiện tại",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.primary,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.clickable { exportCatalogLauncher.launch("danh_sach_thuc_pham.xlsx") }
+                                        )
+                                        Text(
+                                            "Đặt lại danh mục",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.error,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.clickable { onClearCatalog() }
+                                        )
+                                    }
                                 }
 
                                 // Custom Tab Row
