@@ -173,7 +173,7 @@ fun GymApp(container: AppContainer) {
                 onApplyTimeBudget = todayViewModel::applyTimeBudget,
             )
         },
-        progressContent = { onNavigateToCatalog ->
+        progressContent = { onNavigateToCatalog, onNavigateToRoadmap ->
             val factory = remember(container) {
                 viewModelFactory {
                     initializer {
@@ -203,6 +203,7 @@ fun GymApp(container: AppContainer) {
                 onPreviousMonth = progressViewModel::previousMonth,
                 onNextMonth = progressViewModel::nextMonth,
                 onNavigateToCatalog = onNavigateToCatalog,
+                onNavigateToRoadmap = onNavigateToRoadmap,
                 onWeightFilterSelected = progressViewModel::changeWeightFilter,
             )
         },
@@ -416,7 +417,7 @@ fun GymApp(
         onNavigateToRoadmap: () -> Unit,
     ) -> Unit = { _, _, _, _, _, _ -> DestinationScreen(AppDestination.HOME.heading) },
     todayContent: @Composable (onNavigateToCatalog: () -> Unit, onNavigateToNutrition: () -> Unit) -> Unit = { _, _ -> DestinationScreen(AppDestination.WORKOUTS.heading) },
-    progressContent: @Composable (onNavigateToCatalog: () -> Unit) -> Unit = { _ -> DestinationScreen(AppDestination.PROGRESS.heading) },
+    progressContent: @Composable (onNavigateToCatalog: () -> Unit, onNavigateToRoadmap: () -> Unit) -> Unit = { _, _ -> DestinationScreen(AppDestination.PROGRESS.heading) },
     settingsContent: @Composable (onNavigateToProfile: () -> Unit, onNavigateToCheckIn: () -> Unit, onNavigateToRecommendations: () -> Unit) -> Unit = { _, _, _ -> DestinationScreen(AppDestination.SETTINGS.heading) },
     catalogContent: @Composable (onBack: (() -> Unit)?) -> Unit = {},
     nutritionContent: @Composable (onBack: () -> Unit) -> Unit = {},
@@ -452,7 +453,7 @@ private fun ActiveGoalNavigation(
         onNavigateToRoadmap: () -> Unit,
     ) -> Unit,
     todayContent: @Composable (onNavigateToCatalog: () -> Unit, onNavigateToNutrition: () -> Unit) -> Unit,
-    progressContent: @Composable (onNavigateToCatalog: () -> Unit) -> Unit,
+    progressContent: @Composable (onNavigateToCatalog: () -> Unit, onNavigateToRoadmap: () -> Unit) -> Unit,
     settingsContent: @Composable (onNavigateToProfile: () -> Unit, onNavigateToCheckIn: () -> Unit, onNavigateToRecommendations: () -> Unit) -> Unit,
     catalogContent: @Composable (onBack: (() -> Unit)?) -> Unit,
     nutritionContent: @Composable (onBack: () -> Unit) -> Unit,
@@ -520,7 +521,10 @@ private fun ActiveGoalNavigation(
                             { navController.navigate("achievements") },
                             { navController.navigate("roadmap") },
                         )
-                        AppDestination.PROGRESS -> progressContent { navController.navigate("exercise_catalog") }
+                        AppDestination.PROGRESS -> progressContent(
+                            { navController.navigate("exercise_catalog") },
+                            { navController.navigate("roadmap") }
+                        )
                         AppDestination.SETTINGS -> settingsContent(
                             { navController.navigate(AppDestination.PROFILE.route) },
                             { navController.navigate("checkin") },
