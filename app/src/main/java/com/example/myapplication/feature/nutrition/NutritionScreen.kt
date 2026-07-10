@@ -275,6 +275,38 @@ fun NutritionScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
 
+                        if (state.loggedFoods.isNotEmpty()) {
+                            val totalCal = state.loggedFoods.sumOf { it.calories }
+                            val totalP = state.loggedFoods.sumOf { it.proteinGrams }
+                            val totalC = state.loggedFoods.sumOf { it.carbsGrams }
+                            val totalF = state.loggedFoods.sumOf { it.fatGrams }
+                            Surface(
+                                color = colors.surfaceVariant.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Tổng dinh dưỡng đã nạp:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = customColors.primaryText
+                                    )
+                                    Text(
+                                        text = "$totalCal kcal\nP: ${totalP}g  C: ${totalC}g  F: ${totalF}g",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = EnergyOrange,
+                                        textAlign = TextAlign.End
+                                    )
+                                }
+                            }
+                        }
+
                         // Copy yesterday meals button
                         OutlinedButton(
                             onClick = onCopyYesterdayMeals,
@@ -465,7 +497,7 @@ fun NutritionScreen(
                         var selectedTab by remember { mutableStateOf(0) }
                         var expandedFoodId by remember { mutableStateOf<Long?>(null) }
                         var inputGrams by remember { mutableStateOf(100f) }
-                        var inputMealTime by remember { mutableStateOf("BREAKFAST") }
+                        var inputMealTime by remember { mutableStateOf(defaultMealTime()) }
 
                         if (state.foodCatalogCount == 0) {
                             Surface(
@@ -601,6 +633,22 @@ fun NutritionScreen(
                                                             Text(if (food.isFavorite) "⭐" else "☆", fontSize = 18.sp, color = EnergyOrange)
                                                         }
                                                         Spacer(Modifier.width(4.dp))
+                                                        if (selectedTab == 1) {
+                                                            IconButton(
+                                                                onClick = {
+                                                                    onAddFoodFromCatalog(food, food.gramsPerServing)
+                                                                    android.widget.Toast.makeText(
+                                                                        context,
+                                                                        "Đã ăn 1 khẩu phần ${food.name} ⚡",
+                                                                        android.widget.Toast.LENGTH_SHORT
+                                                                    ).show()
+                                                                },
+                                                                modifier = Modifier.size(32.dp)
+                                                            ) {
+                                                                Text("⚡", fontSize = 18.sp)
+                                                            }
+                                                            Spacer(Modifier.width(4.dp))
+                                                        }
                                                         Button(
                                                             onClick = {
                                                                 if (expandedFoodId == food.id) {
@@ -608,7 +656,7 @@ fun NutritionScreen(
                                                                 } else {
                                                                     expandedFoodId = food.id
                                                                     inputGrams = food.gramsPerServing.toFloat()
-                                                                    inputMealTime = "BREAKFAST"
+                                                                    inputMealTime = defaultMealTime()
                                                                 }
                                                             },
                                                             colors = ButtonDefaults.buttonColors(containerColor = EnergyOrange),
@@ -681,6 +729,36 @@ fun NutritionScreen(
                                                             thumbColor = EnergyOrange
                                                         )
                                                     )
+
+                                                    Spacer(Modifier.height(4.dp))
+
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                    ) {
+                                                        val quickGrams = listOf(50, 100, 150, 200, 300, 500)
+                                                        quickGrams.forEach { grams ->
+                                                            val isSelected = inputGrams.toInt() == grams
+                                                            OutlinedButton(
+                                                                onClick = { inputGrams = grams.toFloat() },
+                                                                shape = RoundedCornerShape(8.dp),
+                                                                colors = ButtonDefaults.outlinedButtonColors(
+                                                                    containerColor = if (isSelected) EnergyOrange else Color.Transparent,
+                                                                    contentColor = if (isSelected) Color.White else customColors.primaryText
+                                                                ),
+                                                                border = androidx.compose.foundation.BorderStroke(
+                                                                    1.dp,
+                                                                    if (isSelected) EnergyOrange else colors.outline.copy(alpha = 0.5f)
+                                                                ),
+                                                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                                                                modifier = Modifier
+                                                                    .weight(1f)
+                                                                    .height(32.dp)
+                                                            ) {
+                                                                Text("${grams}g", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                                            }
+                                                        }
+                                                    }
 
                                                     Spacer(Modifier.height(8.dp))
 
@@ -1159,7 +1237,7 @@ private fun WaterCard(state: NutritionUiState.Content, onAddWater: (Int) -> Unit
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text("Đã nạp", style = MaterialTheme.typography.bodyMedium, color = customColors.mutedText)
                     Text(
                         "${state.waterIntakeMl} / $targetWater ml",
@@ -1169,22 +1247,45 @@ private fun WaterCard(state: NutritionUiState.Content, onAddWater: (Int) -> Unit
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.weight(2f)
+                ) {
                     OutlinedButton(
                         onClick = { onAddWater(-250) },
                         enabled = state.waterIntakeMl >= 250,
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                        modifier = Modifier.weight(1f).height(36.dp)
                     ) {
-                        Text("-250ml", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("-250", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = { onAddWater(100) },
+                        colors = ButtonDefaults.buttonColors(containerColor = EnergyOrange),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                        modifier = Modifier.weight(1f).height(36.dp)
+                    ) {
+                        Text("+100", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                     Button(
                         onClick = { onAddWater(250) },
                         colors = ButtonDefaults.buttonColors(containerColor = EnergyOrange),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                        modifier = Modifier.weight(1f).height(36.dp)
                     ) {
-                        Text("+250ml", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("+250", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                    Button(
+                        onClick = { onAddWater(500) },
+                        colors = ButtonDefaults.buttonColors(containerColor = EnergyOrange),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                        modifier = Modifier.weight(1f).height(36.dp)
+                    ) {
+                        Text("+500", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }
@@ -1745,4 +1846,15 @@ private fun loadResizedBitmapFromFile(
         null
     }
 }
+
+private fun defaultMealTime(): String {
+    val hour = java.time.LocalTime.now().hour
+    return when {
+        hour < 10 -> "BREAKFAST"
+        hour < 14 -> "LUNCH"
+        hour < 17 -> "SNACK"
+        else -> "DINNER"
+    }
+}
+
 
