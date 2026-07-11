@@ -1,4 +1,4 @@
-# 🏋️‍♂️ Gym Companion — Trợ lý Luyện tập Offline Toàn diện
+# 🏋️‍♂️ SmartGym — Trợ lý Luyện tập Offline Toàn diện
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android_SDK_24--36-F97316?style=for-the-badge&logo=android&logoColor=white" alt="Android Version">
@@ -11,10 +11,10 @@
 
 ## 🎯 Định hướng Sản phẩm (Product Scope)
 
-**Gym Companion** là ứng dụng di động hỗ trợ luyện tập thể hình cá nhân dành cho hệ điều hành Android, được thiết kế theo triết lý **Offline-First**. Ứng dụng hoạt động hoàn toàn ngoại tuyến nhằm tối ưu hóa sự tập trung của người dùng trong phòng tập, không yêu cầu tài khoản, không đồng bộ đám mây và không chứa quảng cáo.
+**SmartGym** là ứng dụng di động hỗ trợ luyện tập thể hình cá nhân dành cho hệ điều hành Android, được thiết kế theo triết lý **Offline-First**. Ứng dụng hoạt động hoàn toàn ngoại tuyến nhằm tối ưu hóa sự tập trung của người dùng trong phòng tập, không yêu cầu tài khoản, không đồng bộ đám mây và không chứa quảng cáo.
 
 > [!NOTE]
-> Ứng dụng được thiết kế như một công cụ lập kế hoạch luyện tập tổng quát. Gym Companion **không đưa ra lời khuyên y tế** hoặc các phác đồ điều trị chấn thương.
+> Ứng dụng được thiết kế như một công cụ lập kế hoạch luyện tập tổng quát. SmartGym **không đưa ra lời khuyên y tế** hoặc các phác đồ điều trị chấn thương.
 
 ---
 
