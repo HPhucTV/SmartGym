@@ -1,6 +1,7 @@
 package com.example.myapplication.app
 
 import android.os.Build
+import com.example.myapplication.BuildConfig
 import java.net.URI
 
 object BackendConfig {
@@ -43,7 +44,7 @@ object BackendConfig {
 }
 
 internal fun resolveBackendBaseUrl(customUrl: String?, emulator: Boolean): String? =
-    normalizeServerUrl(customUrl) ?: if (emulator) EMULATOR_BACKEND_URL else DEFAULT_PHYSICAL_BACKEND_URL
+    normalizeServerUrl(customUrl) ?: if (emulator) BuildConfig.EMULATOR_BACKEND_URL else BuildConfig.PHYSICAL_BACKEND_URL
 
 internal fun normalizeServerUrl(value: String?): String? {
     val trimmed = value?.trim()?.trimEnd('/')?.takeIf { it.isNotEmpty() } ?: return null
@@ -56,6 +57,3 @@ internal fun normalizeServerUrl(value: String?): String? {
     }
     return candidate
 }
-
-private const val EMULATOR_BACKEND_URL = "http://10.0.2.2:3000"
-private const val DEFAULT_PHYSICAL_BACKEND_URL = "https://gym-app-w7sz.onrender.com"

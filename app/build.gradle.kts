@@ -42,6 +42,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val emulatorBackendUrl = localProperties.getProperty("EMULATOR_BACKEND_URL") ?: "http://10.0.2.2:3000"
+        val physicalBackendUrl = localProperties.getProperty("PHYSICAL_BACKEND_URL") ?: "https://gym-app-w7sz.onrender.com"
+        buildConfigField("String", "EMULATOR_BACKEND_URL", "\"$emulatorBackendUrl\"")
+        buildConfigField("String", "PHYSICAL_BACKEND_URL", "\"$physicalBackendUrl\"")
     }
 
     buildTypes {
@@ -62,6 +67,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     sourceSets {
         getByName("androidTest").assets.directories.add("$projectDir/schemas")

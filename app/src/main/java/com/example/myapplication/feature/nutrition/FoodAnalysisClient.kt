@@ -6,12 +6,14 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -60,17 +62,15 @@ class OkHttpFoodAnalysisClient(
         val baseUrl = com.example.myapplication.app.BackendConfig.baseUrl ?: return@withContext false
         val url = "$baseUrl/api/register-barcode"
 
-        val payload = """
-            {
-                "barcode": "$barcode",
-                "dishName": "${result.dishName}",
-                "totalCalories": ${result.totalCalories},
-                "proteinGrams": ${result.proteinGrams},
-                "carbsGrams": ${result.carbsGrams},
-                "fatGrams": ${result.fatGrams},
-                "advice": "${result.advice}"
-            }
-        """.trimIndent()
+        val payload = buildJsonObject {
+            put("barcode", barcode)
+            put("dishName", result.dishName)
+            put("totalCalories", result.totalCalories)
+            put("proteinGrams", result.proteinGrams)
+            put("carbsGrams", result.carbsGrams)
+            put("fatGrams", result.fatGrams)
+            put("advice", result.advice)
+        }.toString()
 
         val requestBody = payload.toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
