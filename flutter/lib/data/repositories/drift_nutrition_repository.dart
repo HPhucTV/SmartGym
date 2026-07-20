@@ -590,9 +590,6 @@ class DriftNutritionRepository implements NutritionRepository {
   }
 }
 
-const double _maxPhotoCalories = 10000;
-const double _maxPhotoMacroGrams = 1000;
-
 void _validatePhotoLog(
   PhotoNutritionLog log, {
   required String normalizedName,
@@ -623,42 +620,35 @@ void _validatePhotoLog(
   _validatePhotoRange(
     log.estimate.calories,
     field: 'log.estimate.calories',
-    maximum: _maxPhotoCalories,
   );
   _validatePhotoRange(
     log.estimate.proteinGrams,
     field: 'log.estimate.proteinGrams',
-    maximum: _maxPhotoMacroGrams,
   );
   _validatePhotoRange(
     log.estimate.carbsGrams,
     field: 'log.estimate.carbsGrams',
-    maximum: _maxPhotoMacroGrams,
   );
   _validatePhotoRange(
     log.estimate.fatGrams,
     field: 'log.estimate.fatGrams',
-    maximum: _maxPhotoMacroGrams,
   );
 }
 
 void _validatePhotoRange(
   NutritionRange range, {
   required String field,
-  required double maximum,
 }) {
   if (!range.min.isFinite ||
       !range.mid.isFinite ||
       !range.max.isFinite ||
       range.min < 0 ||
       range.min > range.mid ||
-      range.mid > range.max ||
-      range.max > maximum) {
+      range.mid > range.max) {
     throw ArgumentError.value(
       range,
       field,
-      'Nutrition range must be finite, ordered, non-negative, and within '
-      'the physiological bound of $maximum',
+      'Nutrition range must be finite, ordered, and non-negative',
     );
   }
 }

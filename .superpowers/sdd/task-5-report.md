@@ -84,9 +84,10 @@ expected Drift output.
 ## Verification
 
 ```text
-Focused persistence + migration + database tests: 9/9 passed
+Focused persistence + migration tests: 7/7 passed
+Focused persistence + migration + database tests: 11/11 passed
 Home + Profile + Today compatibility tests: 23/23 passed
-Full Flutter test suite: 232/232 passed
+Full Flutter test suite: 234/234 passed
 Scoped analyzer (six Task 5 source/test files): no issues
 git diff --check: no whitespace errors
 ```
@@ -107,8 +108,10 @@ unchanged.
 - Calculation summary is trimmed and required.
 - Unknown image types are rejected.
 - Every range is revalidated at the persistence boundary for finite,
-  non-negative, ordered values before the transaction opens.
-- Persistence bounds are 10,000 kcal and 1,000 g per macro.
+  non-negative, ordered values before the transaction opens. No additional
+  output ceiling is imposed: valid upstream estimates can reach the canonical
+  5,000 g consumed-amount limit (50,000 kcal and 5,000 g of a macro for a
+  label whose per-100g fact is at its canonical maximum).
 - The documented rounding helper uses Dart nearest-integer rounding for the
   non-negative midpoint values written to both the row and daily totals.
 
@@ -123,9 +126,16 @@ unchanged.
 - `flutter/test/data/photo_nutrition_persistence_test.dart`
 - `flutter/test/data/database_migration_v3_test.dart`
 
-## Concerns
+## Review follow-up
 
-The approved plan requires physiological bounds but does not assign numeric
-values. This implementation makes the boundary explicit at 10,000 kcal and
-1,000 g per macro. Those constants are isolated in the repository and can be
-adjusted after product review without a schema migration.
+- Removed the invented 10,000 kcal / 1,000 g output ceilings. Persistence now
+  accepts every finite, non-negative, ordered `NutritionEstimate` that the
+  canonical upstream contract can produce.
+- Added a regression test at 50,000 kcal and 5,000 g macro values.
+- Reworked the migration fixture to recreate the real v2
+  `idx_logged_foods_day_time` index and exercise both `user_version = 1` and
+  `user_version = 2`, with fixture/database teardown guarded by `finally` and
+  `tearDown`.
+- A concurrent full-suite run once exposed the existing timing-sensitive Today
+  loading assertion; the Today file passed in isolation, and the subsequent
+  full suite passed all 234 tests.

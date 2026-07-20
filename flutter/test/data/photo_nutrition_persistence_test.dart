@@ -127,6 +127,30 @@ void main() {
     );
   });
 
+  test('accepts canonical upstream maximum estimate values', () async {
+    final estimate = NutritionEstimate(
+      calories: NutritionRange(min: 50000, mid: 50000, max: 50000),
+      proteinGrams: NutritionRange(min: 5000, mid: 5000, max: 5000),
+      carbsGrams: NutritionRange(min: 5000, mid: 5000, max: 5000),
+      fatGrams: NutritionRange(min: 5000, mid: 5000, max: 5000),
+    );
+
+    await repository.logPhotoEstimate(
+      epochDay: epochDay,
+      log: photoLog(estimate: estimate),
+    );
+
+    final row = (await repository.loggedFoodsNow(epochDay)).single;
+    expect(row.calories, 50000);
+    expect(row.proteinGrams, 5000);
+    expect(row.carbsGrams, 5000);
+    expect(row.fatGrams, 5000);
+    expect(row.calorieMin, 50000);
+    expect(row.calorieMax, 50000);
+    expect(row.proteinMinGrams, 5000);
+    expect(row.proteinMaxGrams, 5000);
+  });
+
   test('manual logging retains MANUAL source and null analysis metadata',
       () async {
     await repository.logFood(
@@ -160,22 +184,6 @@ void main() {
     final invalidLogs = [
       photoLog(name: '   '),
       photoLog(summary: '   '),
-      photoLog(
-        estimate: NutritionEstimate(
-          calories: NutritionRange(min: 0, mid: 500, max: 10000.1),
-          proteinGrams: NutritionRange(min: 0, mid: 20, max: 30),
-          carbsGrams: NutritionRange(min: 0, mid: 20, max: 30),
-          fatGrams: NutritionRange(min: 0, mid: 20, max: 30),
-        ),
-      ),
-      photoLog(
-        estimate: NutritionEstimate(
-          calories: NutritionRange(min: 0, mid: 500, max: 600),
-          proteinGrams: NutritionRange(min: 0, mid: 20, max: 1000.1),
-          carbsGrams: NutritionRange(min: 0, mid: 20, max: 30),
-          fatGrams: NutritionRange(min: 0, mid: 20, max: 30),
-        ),
-      ),
     ];
 
     for (final log in invalidLogs) {
