@@ -1,3 +1,4 @@
+import '../../core/model/food_photo_analysis_models.dart';
 import '../../core/model/nutrition_models.dart';
 import '../local/database.dart';
 
@@ -45,6 +46,24 @@ class NutritionPreferenceState {
   });
 }
 
+final class PhotoNutritionLog {
+  final String name;
+  final String mealTime;
+  final FoodImageType imageType;
+  final NutritionEstimate estimate;
+  final AnalysisConfidenceLevel confidenceLevel;
+  final String calculationSummary;
+
+  const PhotoNutritionLog({
+    required this.name,
+    required this.mealTime,
+    required this.imageType,
+    required this.estimate,
+    required this.confidenceLevel,
+    required this.calculationSummary,
+  });
+}
+
 abstract class NutritionRepository {
   Stream<NutritionData> get nutritionData;
   Stream<NutritionDay> observeDay(int epochDay);
@@ -81,6 +100,10 @@ abstract class NutritionRepository {
     required int fatGrams,
     required int fiberGrams,
     int? foodCatalogId,
+  });
+  Future<void> logPhotoEstimate({
+    required int epochDay,
+    required PhotoNutritionLog log,
   });
   Future<void> deleteLoggedFood(int id);
   Future<void> copyYesterdayMeals(int yesterdayEpochDay, int todayEpochDay);

@@ -72,7 +72,7 @@ class GymDatabase extends _$GymDatabase {
   GymDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -84,6 +84,20 @@ class GymDatabase extends _$GymDatabase {
                 'CREATE INDEX IF NOT EXISTS idx_food_catalog_name ON food_catalog (name);');
             await customStatement(
                 'CREATE INDEX IF NOT EXISTS idx_food_catalog_fav_name ON food_catalog (is_favorite, name);');
+          }
+          if (from < 3) {
+            await m.addColumn(loggedFoods, loggedFoods.source);
+            await m.addColumn(loggedFoods, loggedFoods.calorieMin);
+            await m.addColumn(loggedFoods, loggedFoods.calorieMax);
+            await m.addColumn(loggedFoods, loggedFoods.proteinMinGrams);
+            await m.addColumn(loggedFoods, loggedFoods.proteinMaxGrams);
+            await m.addColumn(loggedFoods, loggedFoods.carbsMinGrams);
+            await m.addColumn(loggedFoods, loggedFoods.carbsMaxGrams);
+            await m.addColumn(loggedFoods, loggedFoods.fatMinGrams);
+            await m.addColumn(loggedFoods, loggedFoods.fatMaxGrams);
+            await m.addColumn(loggedFoods, loggedFoods.analysisConfidence);
+            await m.addColumn(loggedFoods, loggedFoods.analysisImageType);
+            await m.addColumn(loggedFoods, loggedFoods.calculationSummary);
           }
         },
       );

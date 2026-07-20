@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:drift/drift.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/model/food_photo_analysis_models.dart';
 import '../../core/model/nutrition_models.dart';
 import '../local/database.dart';
 import '../local/daos/personalization_dao.dart';
@@ -377,6 +378,66 @@ class DriftNutritionRepository implements NutritionRepository {
   }
 
   @override
+  Future<void> logPhotoEstimate({
+    required int epochDay,
+    required PhotoNutritionLog log,
+  }) async {
+    final normalizedName = log.name.trim();
+    final normalizedSummary = log.calculationSummary.trim();
+    _validatePhotoLog(
+      log,
+      normalizedName: normalizedName,
+      normalizedSummary: normalizedSummary,
+    );
+
+    final estimate = log.estimate;
+    final calories = _roundPhotoNutritionValue(estimate.calories.mid);
+    final proteinGrams = _roundPhotoNutritionValue(estimate.proteinGrams.mid);
+    final carbsGrams = _roundPhotoNutritionValue(estimate.carbsGrams.mid);
+    final fatGrams = _roundPhotoNutritionValue(estimate.fatGrams.mid);
+    final companion = LoggedFoodsCompanion(
+      epochDay: Value(epochDay),
+      name: Value(normalizedName),
+      mealTime: Value(log.mealTime),
+      grams: const Value(0.0),
+      calories: Value(calories),
+      proteinGrams: Value(proteinGrams),
+      carbsGrams: Value(carbsGrams),
+      fatGrams: Value(fatGrams),
+      fiberGrams: const Value(0),
+      timestamp: Value(nowEpochMillis()),
+      source: Value(FoodNutritionSource.cameraAnalysis.wireValue),
+      calorieMin: Value(_roundPhotoNutritionValue(estimate.calories.min)),
+      calorieMax: Value(_roundPhotoNutritionValue(estimate.calories.max)),
+      proteinMinGrams: Value(estimate.proteinGrams.min),
+      proteinMaxGrams: Value(estimate.proteinGrams.max),
+      carbsMinGrams: Value(estimate.carbsGrams.min),
+      carbsMaxGrams: Value(estimate.carbsGrams.max),
+      fatMinGrams: Value(estimate.fatGrams.min),
+      fatMaxGrams: Value(estimate.fatGrams.max),
+      analysisConfidence: Value(log.confidenceLevel.wireValue),
+      analysisImageType: Value(log.imageType.wireValue),
+      calculationSummary: Value(normalizedSummary),
+    );
+
+    await database.transaction(() async {
+      await loggedFoodDao.insert(companion);
+
+      final current = await _entityNow(epochDay);
+      await personalizationDao.upsertDailyNutrition(
+        current.copyWith(
+          consumedCalories: current.consumedCalories + calories,
+          consumedProteinGrams: current.consumedProteinGrams + proteinGrams,
+          consumedCarbsGrams: current.consumedCarbsGrams + carbsGrams,
+          consumedFatGrams: current.consumedFatGrams + fatGrams,
+          lastEntrySource: Value(FoodNutritionSource.cameraAnalysis.wireValue),
+          updatedAtEpochMillis: nowEpochMillis(),
+        ),
+      );
+    });
+  }
+
+  @override
   Future<void> deleteLoggedFood(int id) async {
     await database.transaction(() async {
       final food = await loggedFoodDao.getById(id);
@@ -528,3 +589,80 @@ class DriftNutritionRepository implements NutritionRepository {
     );
   }
 }
+
+const double _maxPhotoCalories = 10000;
+const double _maxPhotoMacroGrams = 1000;
+
+void _validatePhotoLog(
+  PhotoNutritionLog log, {
+  required String normalizedName,
+  required String normalizedSummary,
+}) {
+  if (normalizedName.isEmpty || normalizedName.length > 160) {
+    throw ArgumentError.value(
+      log.name,
+      'log.name',
+      'Photo nutrition name must contain 1..160 characters',
+    );
+  }
+  if (normalizedSummary.isEmpty) {
+    throw ArgumentError.value(
+      log.calculationSummary,
+      'log.calculationSummary',
+      'Photo nutrition calculation summary must not be empty',
+    );
+  }
+  if (log.imageType == FoodImageType.unknown) {
+    throw ArgumentError.value(
+      log.imageType,
+      'log.imageType',
+      'A saved photo estimate must have a recognized image type',
+    );
+  }
+
+  _validatePhotoRange(
+    log.estimate.calories,
+    field: 'log.estimate.calories',
+    maximum: _maxPhotoCalories,
+  );
+  _validatePhotoRange(
+    log.estimate.proteinGrams,
+    field: 'log.estimate.proteinGrams',
+    maximum: _maxPhotoMacroGrams,
+  );
+  _validatePhotoRange(
+    log.estimate.carbsGrams,
+    field: 'log.estimate.carbsGrams',
+    maximum: _maxPhotoMacroGrams,
+  );
+  _validatePhotoRange(
+    log.estimate.fatGrams,
+    field: 'log.estimate.fatGrams',
+    maximum: _maxPhotoMacroGrams,
+  );
+}
+
+void _validatePhotoRange(
+  NutritionRange range, {
+  required String field,
+  required double maximum,
+}) {
+  if (!range.min.isFinite ||
+      !range.mid.isFinite ||
+      !range.max.isFinite ||
+      range.min < 0 ||
+      range.min > range.mid ||
+      range.mid > range.max ||
+      range.max > maximum) {
+    throw ArgumentError.value(
+      range,
+      field,
+      'Nutrition range must be finite, ordered, non-negative, and within '
+      'the physiological bound of $maximum',
+    );
+  }
+}
+
+/// Legacy daily totals are integer-based, so confirmed non-negative midpoint
+/// values use Dart's nearest-integer rounding before both row and total writes.
+int _roundPhotoNutritionValue(double value) => value.round();

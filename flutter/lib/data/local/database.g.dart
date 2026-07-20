@@ -6540,6 +6540,79 @@ class $LoggedFoodsTable extends LoggedFoods
   late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
       'timestamp', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+      'source', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('MANUAL'));
+  static const VerificationMeta _calorieMinMeta =
+      const VerificationMeta('calorieMin');
+  @override
+  late final GeneratedColumn<int> calorieMin = GeneratedColumn<int>(
+      'calorie_min', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _calorieMaxMeta =
+      const VerificationMeta('calorieMax');
+  @override
+  late final GeneratedColumn<int> calorieMax = GeneratedColumn<int>(
+      'calorie_max', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _proteinMinGramsMeta =
+      const VerificationMeta('proteinMinGrams');
+  @override
+  late final GeneratedColumn<double> proteinMinGrams = GeneratedColumn<double>(
+      'protein_min_grams', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _proteinMaxGramsMeta =
+      const VerificationMeta('proteinMaxGrams');
+  @override
+  late final GeneratedColumn<double> proteinMaxGrams = GeneratedColumn<double>(
+      'protein_max_grams', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _carbsMinGramsMeta =
+      const VerificationMeta('carbsMinGrams');
+  @override
+  late final GeneratedColumn<double> carbsMinGrams = GeneratedColumn<double>(
+      'carbs_min_grams', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _carbsMaxGramsMeta =
+      const VerificationMeta('carbsMaxGrams');
+  @override
+  late final GeneratedColumn<double> carbsMaxGrams = GeneratedColumn<double>(
+      'carbs_max_grams', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _fatMinGramsMeta =
+      const VerificationMeta('fatMinGrams');
+  @override
+  late final GeneratedColumn<double> fatMinGrams = GeneratedColumn<double>(
+      'fat_min_grams', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _fatMaxGramsMeta =
+      const VerificationMeta('fatMaxGrams');
+  @override
+  late final GeneratedColumn<double> fatMaxGrams = GeneratedColumn<double>(
+      'fat_max_grams', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _analysisConfidenceMeta =
+      const VerificationMeta('analysisConfidence');
+  @override
+  late final GeneratedColumn<String> analysisConfidence =
+      GeneratedColumn<String>('analysis_confidence', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _analysisImageTypeMeta =
+      const VerificationMeta('analysisImageType');
+  @override
+  late final GeneratedColumn<String> analysisImageType =
+      GeneratedColumn<String>('analysis_image_type', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _calculationSummaryMeta =
+      const VerificationMeta('calculationSummary');
+  @override
+  late final GeneratedColumn<String> calculationSummary =
+      GeneratedColumn<String>('calculation_summary', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -6553,7 +6626,19 @@ class $LoggedFoodsTable extends LoggedFoods
         fatGrams,
         fiberGrams,
         foodCatalogId,
-        timestamp
+        timestamp,
+        source,
+        calorieMin,
+        calorieMax,
+        proteinMinGrams,
+        proteinMaxGrams,
+        carbsMinGrams,
+        carbsMaxGrams,
+        fatMinGrams,
+        fatMaxGrams,
+        analysisConfidence,
+        analysisImageType,
+        calculationSummary
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6638,6 +6723,76 @@ class $LoggedFoodsTable extends LoggedFoods
     } else if (isInserting) {
       context.missing(_timestampMeta);
     }
+    if (data.containsKey('source')) {
+      context.handle(_sourceMeta,
+          source.isAcceptableOrUnknown(data['source']!, _sourceMeta));
+    }
+    if (data.containsKey('calorie_min')) {
+      context.handle(
+          _calorieMinMeta,
+          calorieMin.isAcceptableOrUnknown(
+              data['calorie_min']!, _calorieMinMeta));
+    }
+    if (data.containsKey('calorie_max')) {
+      context.handle(
+          _calorieMaxMeta,
+          calorieMax.isAcceptableOrUnknown(
+              data['calorie_max']!, _calorieMaxMeta));
+    }
+    if (data.containsKey('protein_min_grams')) {
+      context.handle(
+          _proteinMinGramsMeta,
+          proteinMinGrams.isAcceptableOrUnknown(
+              data['protein_min_grams']!, _proteinMinGramsMeta));
+    }
+    if (data.containsKey('protein_max_grams')) {
+      context.handle(
+          _proteinMaxGramsMeta,
+          proteinMaxGrams.isAcceptableOrUnknown(
+              data['protein_max_grams']!, _proteinMaxGramsMeta));
+    }
+    if (data.containsKey('carbs_min_grams')) {
+      context.handle(
+          _carbsMinGramsMeta,
+          carbsMinGrams.isAcceptableOrUnknown(
+              data['carbs_min_grams']!, _carbsMinGramsMeta));
+    }
+    if (data.containsKey('carbs_max_grams')) {
+      context.handle(
+          _carbsMaxGramsMeta,
+          carbsMaxGrams.isAcceptableOrUnknown(
+              data['carbs_max_grams']!, _carbsMaxGramsMeta));
+    }
+    if (data.containsKey('fat_min_grams')) {
+      context.handle(
+          _fatMinGramsMeta,
+          fatMinGrams.isAcceptableOrUnknown(
+              data['fat_min_grams']!, _fatMinGramsMeta));
+    }
+    if (data.containsKey('fat_max_grams')) {
+      context.handle(
+          _fatMaxGramsMeta,
+          fatMaxGrams.isAcceptableOrUnknown(
+              data['fat_max_grams']!, _fatMaxGramsMeta));
+    }
+    if (data.containsKey('analysis_confidence')) {
+      context.handle(
+          _analysisConfidenceMeta,
+          analysisConfidence.isAcceptableOrUnknown(
+              data['analysis_confidence']!, _analysisConfidenceMeta));
+    }
+    if (data.containsKey('analysis_image_type')) {
+      context.handle(
+          _analysisImageTypeMeta,
+          analysisImageType.isAcceptableOrUnknown(
+              data['analysis_image_type']!, _analysisImageTypeMeta));
+    }
+    if (data.containsKey('calculation_summary')) {
+      context.handle(
+          _calculationSummaryMeta,
+          calculationSummary.isAcceptableOrUnknown(
+              data['calculation_summary']!, _calculationSummaryMeta));
+    }
     return context;
   }
 
@@ -6671,6 +6826,30 @@ class $LoggedFoodsTable extends LoggedFoods
           .read(DriftSqlType.int, data['${effectivePrefix}food_catalog_id']),
       timestamp: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}timestamp'])!,
+      source: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source'])!,
+      calorieMin: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}calorie_min']),
+      calorieMax: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}calorie_max']),
+      proteinMinGrams: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}protein_min_grams']),
+      proteinMaxGrams: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}protein_max_grams']),
+      carbsMinGrams: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}carbs_min_grams']),
+      carbsMaxGrams: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}carbs_max_grams']),
+      fatMinGrams: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}fat_min_grams']),
+      fatMaxGrams: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}fat_max_grams']),
+      analysisConfidence: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}analysis_confidence']),
+      analysisImageType: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}analysis_image_type']),
+      calculationSummary: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}calculation_summary']),
     );
   }
 
@@ -6693,6 +6872,18 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
   final int fiberGrams;
   final int? foodCatalogId;
   final int timestamp;
+  final String source;
+  final int? calorieMin;
+  final int? calorieMax;
+  final double? proteinMinGrams;
+  final double? proteinMaxGrams;
+  final double? carbsMinGrams;
+  final double? carbsMaxGrams;
+  final double? fatMinGrams;
+  final double? fatMaxGrams;
+  final String? analysisConfidence;
+  final String? analysisImageType;
+  final String? calculationSummary;
   const LoggedFoodData(
       {required this.id,
       required this.epochDay,
@@ -6705,7 +6896,19 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
       required this.fatGrams,
       required this.fiberGrams,
       this.foodCatalogId,
-      required this.timestamp});
+      required this.timestamp,
+      required this.source,
+      this.calorieMin,
+      this.calorieMax,
+      this.proteinMinGrams,
+      this.proteinMaxGrams,
+      this.carbsMinGrams,
+      this.carbsMaxGrams,
+      this.fatMinGrams,
+      this.fatMaxGrams,
+      this.analysisConfidence,
+      this.analysisImageType,
+      this.calculationSummary});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -6723,6 +6926,40 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
       map['food_catalog_id'] = Variable<int>(foodCatalogId);
     }
     map['timestamp'] = Variable<int>(timestamp);
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || calorieMin != null) {
+      map['calorie_min'] = Variable<int>(calorieMin);
+    }
+    if (!nullToAbsent || calorieMax != null) {
+      map['calorie_max'] = Variable<int>(calorieMax);
+    }
+    if (!nullToAbsent || proteinMinGrams != null) {
+      map['protein_min_grams'] = Variable<double>(proteinMinGrams);
+    }
+    if (!nullToAbsent || proteinMaxGrams != null) {
+      map['protein_max_grams'] = Variable<double>(proteinMaxGrams);
+    }
+    if (!nullToAbsent || carbsMinGrams != null) {
+      map['carbs_min_grams'] = Variable<double>(carbsMinGrams);
+    }
+    if (!nullToAbsent || carbsMaxGrams != null) {
+      map['carbs_max_grams'] = Variable<double>(carbsMaxGrams);
+    }
+    if (!nullToAbsent || fatMinGrams != null) {
+      map['fat_min_grams'] = Variable<double>(fatMinGrams);
+    }
+    if (!nullToAbsent || fatMaxGrams != null) {
+      map['fat_max_grams'] = Variable<double>(fatMaxGrams);
+    }
+    if (!nullToAbsent || analysisConfidence != null) {
+      map['analysis_confidence'] = Variable<String>(analysisConfidence);
+    }
+    if (!nullToAbsent || analysisImageType != null) {
+      map['analysis_image_type'] = Variable<String>(analysisImageType);
+    }
+    if (!nullToAbsent || calculationSummary != null) {
+      map['calculation_summary'] = Variable<String>(calculationSummary);
+    }
     return map;
   }
 
@@ -6742,6 +6979,40 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
           ? const Value.absent()
           : Value(foodCatalogId),
       timestamp: Value(timestamp),
+      source: Value(source),
+      calorieMin: calorieMin == null && nullToAbsent
+          ? const Value.absent()
+          : Value(calorieMin),
+      calorieMax: calorieMax == null && nullToAbsent
+          ? const Value.absent()
+          : Value(calorieMax),
+      proteinMinGrams: proteinMinGrams == null && nullToAbsent
+          ? const Value.absent()
+          : Value(proteinMinGrams),
+      proteinMaxGrams: proteinMaxGrams == null && nullToAbsent
+          ? const Value.absent()
+          : Value(proteinMaxGrams),
+      carbsMinGrams: carbsMinGrams == null && nullToAbsent
+          ? const Value.absent()
+          : Value(carbsMinGrams),
+      carbsMaxGrams: carbsMaxGrams == null && nullToAbsent
+          ? const Value.absent()
+          : Value(carbsMaxGrams),
+      fatMinGrams: fatMinGrams == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fatMinGrams),
+      fatMaxGrams: fatMaxGrams == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fatMaxGrams),
+      analysisConfidence: analysisConfidence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(analysisConfidence),
+      analysisImageType: analysisImageType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(analysisImageType),
+      calculationSummary: calculationSummary == null && nullToAbsent
+          ? const Value.absent()
+          : Value(calculationSummary),
     );
   }
 
@@ -6761,6 +7032,21 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
       fiberGrams: serializer.fromJson<int>(json['fiberGrams']),
       foodCatalogId: serializer.fromJson<int?>(json['foodCatalogId']),
       timestamp: serializer.fromJson<int>(json['timestamp']),
+      source: serializer.fromJson<String>(json['source']),
+      calorieMin: serializer.fromJson<int?>(json['calorieMin']),
+      calorieMax: serializer.fromJson<int?>(json['calorieMax']),
+      proteinMinGrams: serializer.fromJson<double?>(json['proteinMinGrams']),
+      proteinMaxGrams: serializer.fromJson<double?>(json['proteinMaxGrams']),
+      carbsMinGrams: serializer.fromJson<double?>(json['carbsMinGrams']),
+      carbsMaxGrams: serializer.fromJson<double?>(json['carbsMaxGrams']),
+      fatMinGrams: serializer.fromJson<double?>(json['fatMinGrams']),
+      fatMaxGrams: serializer.fromJson<double?>(json['fatMaxGrams']),
+      analysisConfidence:
+          serializer.fromJson<String?>(json['analysisConfidence']),
+      analysisImageType:
+          serializer.fromJson<String?>(json['analysisImageType']),
+      calculationSummary:
+          serializer.fromJson<String?>(json['calculationSummary']),
     );
   }
   @override
@@ -6779,6 +7065,18 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
       'fiberGrams': serializer.toJson<int>(fiberGrams),
       'foodCatalogId': serializer.toJson<int?>(foodCatalogId),
       'timestamp': serializer.toJson<int>(timestamp),
+      'source': serializer.toJson<String>(source),
+      'calorieMin': serializer.toJson<int?>(calorieMin),
+      'calorieMax': serializer.toJson<int?>(calorieMax),
+      'proteinMinGrams': serializer.toJson<double?>(proteinMinGrams),
+      'proteinMaxGrams': serializer.toJson<double?>(proteinMaxGrams),
+      'carbsMinGrams': serializer.toJson<double?>(carbsMinGrams),
+      'carbsMaxGrams': serializer.toJson<double?>(carbsMaxGrams),
+      'fatMinGrams': serializer.toJson<double?>(fatMinGrams),
+      'fatMaxGrams': serializer.toJson<double?>(fatMaxGrams),
+      'analysisConfidence': serializer.toJson<String?>(analysisConfidence),
+      'analysisImageType': serializer.toJson<String?>(analysisImageType),
+      'calculationSummary': serializer.toJson<String?>(calculationSummary),
     };
   }
 
@@ -6794,7 +7092,19 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
           int? fatGrams,
           int? fiberGrams,
           Value<int?> foodCatalogId = const Value.absent(),
-          int? timestamp}) =>
+          int? timestamp,
+          String? source,
+          Value<int?> calorieMin = const Value.absent(),
+          Value<int?> calorieMax = const Value.absent(),
+          Value<double?> proteinMinGrams = const Value.absent(),
+          Value<double?> proteinMaxGrams = const Value.absent(),
+          Value<double?> carbsMinGrams = const Value.absent(),
+          Value<double?> carbsMaxGrams = const Value.absent(),
+          Value<double?> fatMinGrams = const Value.absent(),
+          Value<double?> fatMaxGrams = const Value.absent(),
+          Value<String?> analysisConfidence = const Value.absent(),
+          Value<String?> analysisImageType = const Value.absent(),
+          Value<String?> calculationSummary = const Value.absent()}) =>
       LoggedFoodData(
         id: id ?? this.id,
         epochDay: epochDay ?? this.epochDay,
@@ -6809,6 +7119,30 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
         foodCatalogId:
             foodCatalogId.present ? foodCatalogId.value : this.foodCatalogId,
         timestamp: timestamp ?? this.timestamp,
+        source: source ?? this.source,
+        calorieMin: calorieMin.present ? calorieMin.value : this.calorieMin,
+        calorieMax: calorieMax.present ? calorieMax.value : this.calorieMax,
+        proteinMinGrams: proteinMinGrams.present
+            ? proteinMinGrams.value
+            : this.proteinMinGrams,
+        proteinMaxGrams: proteinMaxGrams.present
+            ? proteinMaxGrams.value
+            : this.proteinMaxGrams,
+        carbsMinGrams:
+            carbsMinGrams.present ? carbsMinGrams.value : this.carbsMinGrams,
+        carbsMaxGrams:
+            carbsMaxGrams.present ? carbsMaxGrams.value : this.carbsMaxGrams,
+        fatMinGrams: fatMinGrams.present ? fatMinGrams.value : this.fatMinGrams,
+        fatMaxGrams: fatMaxGrams.present ? fatMaxGrams.value : this.fatMaxGrams,
+        analysisConfidence: analysisConfidence.present
+            ? analysisConfidence.value
+            : this.analysisConfidence,
+        analysisImageType: analysisImageType.present
+            ? analysisImageType.value
+            : this.analysisImageType,
+        calculationSummary: calculationSummary.present
+            ? calculationSummary.value
+            : this.calculationSummary,
       );
   LoggedFoodData copyWithCompanion(LoggedFoodsCompanion data) {
     return LoggedFoodData(
@@ -6830,6 +7164,36 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
           ? data.foodCatalogId.value
           : this.foodCatalogId,
       timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      source: data.source.present ? data.source.value : this.source,
+      calorieMin:
+          data.calorieMin.present ? data.calorieMin.value : this.calorieMin,
+      calorieMax:
+          data.calorieMax.present ? data.calorieMax.value : this.calorieMax,
+      proteinMinGrams: data.proteinMinGrams.present
+          ? data.proteinMinGrams.value
+          : this.proteinMinGrams,
+      proteinMaxGrams: data.proteinMaxGrams.present
+          ? data.proteinMaxGrams.value
+          : this.proteinMaxGrams,
+      carbsMinGrams: data.carbsMinGrams.present
+          ? data.carbsMinGrams.value
+          : this.carbsMinGrams,
+      carbsMaxGrams: data.carbsMaxGrams.present
+          ? data.carbsMaxGrams.value
+          : this.carbsMaxGrams,
+      fatMinGrams:
+          data.fatMinGrams.present ? data.fatMinGrams.value : this.fatMinGrams,
+      fatMaxGrams:
+          data.fatMaxGrams.present ? data.fatMaxGrams.value : this.fatMaxGrams,
+      analysisConfidence: data.analysisConfidence.present
+          ? data.analysisConfidence.value
+          : this.analysisConfidence,
+      analysisImageType: data.analysisImageType.present
+          ? data.analysisImageType.value
+          : this.analysisImageType,
+      calculationSummary: data.calculationSummary.present
+          ? data.calculationSummary.value
+          : this.calculationSummary,
     );
   }
 
@@ -6847,14 +7211,50 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
           ..write('fatGrams: $fatGrams, ')
           ..write('fiberGrams: $fiberGrams, ')
           ..write('foodCatalogId: $foodCatalogId, ')
-          ..write('timestamp: $timestamp')
+          ..write('timestamp: $timestamp, ')
+          ..write('source: $source, ')
+          ..write('calorieMin: $calorieMin, ')
+          ..write('calorieMax: $calorieMax, ')
+          ..write('proteinMinGrams: $proteinMinGrams, ')
+          ..write('proteinMaxGrams: $proteinMaxGrams, ')
+          ..write('carbsMinGrams: $carbsMinGrams, ')
+          ..write('carbsMaxGrams: $carbsMaxGrams, ')
+          ..write('fatMinGrams: $fatMinGrams, ')
+          ..write('fatMaxGrams: $fatMaxGrams, ')
+          ..write('analysisConfidence: $analysisConfidence, ')
+          ..write('analysisImageType: $analysisImageType, ')
+          ..write('calculationSummary: $calculationSummary')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, epochDay, name, mealTime, grams, calories,
-      proteinGrams, carbsGrams, fatGrams, fiberGrams, foodCatalogId, timestamp);
+  int get hashCode => Object.hashAll([
+        id,
+        epochDay,
+        name,
+        mealTime,
+        grams,
+        calories,
+        proteinGrams,
+        carbsGrams,
+        fatGrams,
+        fiberGrams,
+        foodCatalogId,
+        timestamp,
+        source,
+        calorieMin,
+        calorieMax,
+        proteinMinGrams,
+        proteinMaxGrams,
+        carbsMinGrams,
+        carbsMaxGrams,
+        fatMinGrams,
+        fatMaxGrams,
+        analysisConfidence,
+        analysisImageType,
+        calculationSummary
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6870,7 +7270,19 @@ class LoggedFoodData extends DataClass implements Insertable<LoggedFoodData> {
           other.fatGrams == this.fatGrams &&
           other.fiberGrams == this.fiberGrams &&
           other.foodCatalogId == this.foodCatalogId &&
-          other.timestamp == this.timestamp);
+          other.timestamp == this.timestamp &&
+          other.source == this.source &&
+          other.calorieMin == this.calorieMin &&
+          other.calorieMax == this.calorieMax &&
+          other.proteinMinGrams == this.proteinMinGrams &&
+          other.proteinMaxGrams == this.proteinMaxGrams &&
+          other.carbsMinGrams == this.carbsMinGrams &&
+          other.carbsMaxGrams == this.carbsMaxGrams &&
+          other.fatMinGrams == this.fatMinGrams &&
+          other.fatMaxGrams == this.fatMaxGrams &&
+          other.analysisConfidence == this.analysisConfidence &&
+          other.analysisImageType == this.analysisImageType &&
+          other.calculationSummary == this.calculationSummary);
 }
 
 class LoggedFoodsCompanion extends UpdateCompanion<LoggedFoodData> {
@@ -6886,6 +7298,18 @@ class LoggedFoodsCompanion extends UpdateCompanion<LoggedFoodData> {
   final Value<int> fiberGrams;
   final Value<int?> foodCatalogId;
   final Value<int> timestamp;
+  final Value<String> source;
+  final Value<int?> calorieMin;
+  final Value<int?> calorieMax;
+  final Value<double?> proteinMinGrams;
+  final Value<double?> proteinMaxGrams;
+  final Value<double?> carbsMinGrams;
+  final Value<double?> carbsMaxGrams;
+  final Value<double?> fatMinGrams;
+  final Value<double?> fatMaxGrams;
+  final Value<String?> analysisConfidence;
+  final Value<String?> analysisImageType;
+  final Value<String?> calculationSummary;
   const LoggedFoodsCompanion({
     this.id = const Value.absent(),
     this.epochDay = const Value.absent(),
@@ -6899,6 +7323,18 @@ class LoggedFoodsCompanion extends UpdateCompanion<LoggedFoodData> {
     this.fiberGrams = const Value.absent(),
     this.foodCatalogId = const Value.absent(),
     this.timestamp = const Value.absent(),
+    this.source = const Value.absent(),
+    this.calorieMin = const Value.absent(),
+    this.calorieMax = const Value.absent(),
+    this.proteinMinGrams = const Value.absent(),
+    this.proteinMaxGrams = const Value.absent(),
+    this.carbsMinGrams = const Value.absent(),
+    this.carbsMaxGrams = const Value.absent(),
+    this.fatMinGrams = const Value.absent(),
+    this.fatMaxGrams = const Value.absent(),
+    this.analysisConfidence = const Value.absent(),
+    this.analysisImageType = const Value.absent(),
+    this.calculationSummary = const Value.absent(),
   });
   LoggedFoodsCompanion.insert({
     this.id = const Value.absent(),
@@ -6913,6 +7349,18 @@ class LoggedFoodsCompanion extends UpdateCompanion<LoggedFoodData> {
     this.fiberGrams = const Value.absent(),
     this.foodCatalogId = const Value.absent(),
     required int timestamp,
+    this.source = const Value.absent(),
+    this.calorieMin = const Value.absent(),
+    this.calorieMax = const Value.absent(),
+    this.proteinMinGrams = const Value.absent(),
+    this.proteinMaxGrams = const Value.absent(),
+    this.carbsMinGrams = const Value.absent(),
+    this.carbsMaxGrams = const Value.absent(),
+    this.fatMinGrams = const Value.absent(),
+    this.fatMaxGrams = const Value.absent(),
+    this.analysisConfidence = const Value.absent(),
+    this.analysisImageType = const Value.absent(),
+    this.calculationSummary = const Value.absent(),
   })  : epochDay = Value(epochDay),
         name = Value(name),
         mealTime = Value(mealTime),
@@ -6935,6 +7383,18 @@ class LoggedFoodsCompanion extends UpdateCompanion<LoggedFoodData> {
     Expression<int>? fiberGrams,
     Expression<int>? foodCatalogId,
     Expression<int>? timestamp,
+    Expression<String>? source,
+    Expression<int>? calorieMin,
+    Expression<int>? calorieMax,
+    Expression<double>? proteinMinGrams,
+    Expression<double>? proteinMaxGrams,
+    Expression<double>? carbsMinGrams,
+    Expression<double>? carbsMaxGrams,
+    Expression<double>? fatMinGrams,
+    Expression<double>? fatMaxGrams,
+    Expression<String>? analysisConfidence,
+    Expression<String>? analysisImageType,
+    Expression<String>? calculationSummary,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -6949,6 +7409,18 @@ class LoggedFoodsCompanion extends UpdateCompanion<LoggedFoodData> {
       if (fiberGrams != null) 'fiber_grams': fiberGrams,
       if (foodCatalogId != null) 'food_catalog_id': foodCatalogId,
       if (timestamp != null) 'timestamp': timestamp,
+      if (source != null) 'source': source,
+      if (calorieMin != null) 'calorie_min': calorieMin,
+      if (calorieMax != null) 'calorie_max': calorieMax,
+      if (proteinMinGrams != null) 'protein_min_grams': proteinMinGrams,
+      if (proteinMaxGrams != null) 'protein_max_grams': proteinMaxGrams,
+      if (carbsMinGrams != null) 'carbs_min_grams': carbsMinGrams,
+      if (carbsMaxGrams != null) 'carbs_max_grams': carbsMaxGrams,
+      if (fatMinGrams != null) 'fat_min_grams': fatMinGrams,
+      if (fatMaxGrams != null) 'fat_max_grams': fatMaxGrams,
+      if (analysisConfidence != null) 'analysis_confidence': analysisConfidence,
+      if (analysisImageType != null) 'analysis_image_type': analysisImageType,
+      if (calculationSummary != null) 'calculation_summary': calculationSummary,
     });
   }
 
@@ -6964,7 +7436,19 @@ class LoggedFoodsCompanion extends UpdateCompanion<LoggedFoodData> {
       Value<int>? fatGrams,
       Value<int>? fiberGrams,
       Value<int?>? foodCatalogId,
-      Value<int>? timestamp}) {
+      Value<int>? timestamp,
+      Value<String>? source,
+      Value<int?>? calorieMin,
+      Value<int?>? calorieMax,
+      Value<double?>? proteinMinGrams,
+      Value<double?>? proteinMaxGrams,
+      Value<double?>? carbsMinGrams,
+      Value<double?>? carbsMaxGrams,
+      Value<double?>? fatMinGrams,
+      Value<double?>? fatMaxGrams,
+      Value<String?>? analysisConfidence,
+      Value<String?>? analysisImageType,
+      Value<String?>? calculationSummary}) {
     return LoggedFoodsCompanion(
       id: id ?? this.id,
       epochDay: epochDay ?? this.epochDay,
@@ -6978,6 +7462,18 @@ class LoggedFoodsCompanion extends UpdateCompanion<LoggedFoodData> {
       fiberGrams: fiberGrams ?? this.fiberGrams,
       foodCatalogId: foodCatalogId ?? this.foodCatalogId,
       timestamp: timestamp ?? this.timestamp,
+      source: source ?? this.source,
+      calorieMin: calorieMin ?? this.calorieMin,
+      calorieMax: calorieMax ?? this.calorieMax,
+      proteinMinGrams: proteinMinGrams ?? this.proteinMinGrams,
+      proteinMaxGrams: proteinMaxGrams ?? this.proteinMaxGrams,
+      carbsMinGrams: carbsMinGrams ?? this.carbsMinGrams,
+      carbsMaxGrams: carbsMaxGrams ?? this.carbsMaxGrams,
+      fatMinGrams: fatMinGrams ?? this.fatMinGrams,
+      fatMaxGrams: fatMaxGrams ?? this.fatMaxGrams,
+      analysisConfidence: analysisConfidence ?? this.analysisConfidence,
+      analysisImageType: analysisImageType ?? this.analysisImageType,
+      calculationSummary: calculationSummary ?? this.calculationSummary,
     );
   }
 
@@ -7020,6 +7516,42 @@ class LoggedFoodsCompanion extends UpdateCompanion<LoggedFoodData> {
     if (timestamp.present) {
       map['timestamp'] = Variable<int>(timestamp.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (calorieMin.present) {
+      map['calorie_min'] = Variable<int>(calorieMin.value);
+    }
+    if (calorieMax.present) {
+      map['calorie_max'] = Variable<int>(calorieMax.value);
+    }
+    if (proteinMinGrams.present) {
+      map['protein_min_grams'] = Variable<double>(proteinMinGrams.value);
+    }
+    if (proteinMaxGrams.present) {
+      map['protein_max_grams'] = Variable<double>(proteinMaxGrams.value);
+    }
+    if (carbsMinGrams.present) {
+      map['carbs_min_grams'] = Variable<double>(carbsMinGrams.value);
+    }
+    if (carbsMaxGrams.present) {
+      map['carbs_max_grams'] = Variable<double>(carbsMaxGrams.value);
+    }
+    if (fatMinGrams.present) {
+      map['fat_min_grams'] = Variable<double>(fatMinGrams.value);
+    }
+    if (fatMaxGrams.present) {
+      map['fat_max_grams'] = Variable<double>(fatMaxGrams.value);
+    }
+    if (analysisConfidence.present) {
+      map['analysis_confidence'] = Variable<String>(analysisConfidence.value);
+    }
+    if (analysisImageType.present) {
+      map['analysis_image_type'] = Variable<String>(analysisImageType.value);
+    }
+    if (calculationSummary.present) {
+      map['calculation_summary'] = Variable<String>(calculationSummary.value);
+    }
     return map;
   }
 
@@ -7037,7 +7569,19 @@ class LoggedFoodsCompanion extends UpdateCompanion<LoggedFoodData> {
           ..write('fatGrams: $fatGrams, ')
           ..write('fiberGrams: $fiberGrams, ')
           ..write('foodCatalogId: $foodCatalogId, ')
-          ..write('timestamp: $timestamp')
+          ..write('timestamp: $timestamp, ')
+          ..write('source: $source, ')
+          ..write('calorieMin: $calorieMin, ')
+          ..write('calorieMax: $calorieMax, ')
+          ..write('proteinMinGrams: $proteinMinGrams, ')
+          ..write('proteinMaxGrams: $proteinMaxGrams, ')
+          ..write('carbsMinGrams: $carbsMinGrams, ')
+          ..write('carbsMaxGrams: $carbsMaxGrams, ')
+          ..write('fatMinGrams: $fatMinGrams, ')
+          ..write('fatMaxGrams: $fatMaxGrams, ')
+          ..write('analysisConfidence: $analysisConfidence, ')
+          ..write('analysisImageType: $analysisImageType, ')
+          ..write('calculationSummary: $calculationSummary')
           ..write(')'))
         .toString();
   }
@@ -10827,6 +11371,18 @@ typedef $$LoggedFoodsTableCreateCompanionBuilder = LoggedFoodsCompanion
   Value<int> fiberGrams,
   Value<int?> foodCatalogId,
   required int timestamp,
+  Value<String> source,
+  Value<int?> calorieMin,
+  Value<int?> calorieMax,
+  Value<double?> proteinMinGrams,
+  Value<double?> proteinMaxGrams,
+  Value<double?> carbsMinGrams,
+  Value<double?> carbsMaxGrams,
+  Value<double?> fatMinGrams,
+  Value<double?> fatMaxGrams,
+  Value<String?> analysisConfidence,
+  Value<String?> analysisImageType,
+  Value<String?> calculationSummary,
 });
 typedef $$LoggedFoodsTableUpdateCompanionBuilder = LoggedFoodsCompanion
     Function({
@@ -10842,6 +11398,18 @@ typedef $$LoggedFoodsTableUpdateCompanionBuilder = LoggedFoodsCompanion
   Value<int> fiberGrams,
   Value<int?> foodCatalogId,
   Value<int> timestamp,
+  Value<String> source,
+  Value<int?> calorieMin,
+  Value<int?> calorieMax,
+  Value<double?> proteinMinGrams,
+  Value<double?> proteinMaxGrams,
+  Value<double?> carbsMinGrams,
+  Value<double?> carbsMaxGrams,
+  Value<double?> fatMinGrams,
+  Value<double?> fatMaxGrams,
+  Value<String?> analysisConfidence,
+  Value<String?> analysisImageType,
+  Value<String?> calculationSummary,
 });
 
 class $$LoggedFoodsTableFilterComposer
@@ -10888,6 +11456,47 @@ class $$LoggedFoodsTableFilterComposer
 
   ColumnFilters<int> get timestamp => $composableBuilder(
       column: $table.timestamp, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get calorieMin => $composableBuilder(
+      column: $table.calorieMin, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get calorieMax => $composableBuilder(
+      column: $table.calorieMax, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get proteinMinGrams => $composableBuilder(
+      column: $table.proteinMinGrams,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get proteinMaxGrams => $composableBuilder(
+      column: $table.proteinMaxGrams,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get carbsMinGrams => $composableBuilder(
+      column: $table.carbsMinGrams, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get carbsMaxGrams => $composableBuilder(
+      column: $table.carbsMaxGrams, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get fatMinGrams => $composableBuilder(
+      column: $table.fatMinGrams, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get fatMaxGrams => $composableBuilder(
+      column: $table.fatMaxGrams, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get analysisConfidence => $composableBuilder(
+      column: $table.analysisConfidence,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get analysisImageType => $composableBuilder(
+      column: $table.analysisImageType,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get calculationSummary => $composableBuilder(
+      column: $table.calculationSummary,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$LoggedFoodsTableOrderingComposer
@@ -10936,6 +11545,49 @@ class $$LoggedFoodsTableOrderingComposer
 
   ColumnOrderings<int> get timestamp => $composableBuilder(
       column: $table.timestamp, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get calorieMin => $composableBuilder(
+      column: $table.calorieMin, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get calorieMax => $composableBuilder(
+      column: $table.calorieMax, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get proteinMinGrams => $composableBuilder(
+      column: $table.proteinMinGrams,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get proteinMaxGrams => $composableBuilder(
+      column: $table.proteinMaxGrams,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get carbsMinGrams => $composableBuilder(
+      column: $table.carbsMinGrams,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get carbsMaxGrams => $composableBuilder(
+      column: $table.carbsMaxGrams,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get fatMinGrams => $composableBuilder(
+      column: $table.fatMinGrams, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get fatMaxGrams => $composableBuilder(
+      column: $table.fatMaxGrams, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get analysisConfidence => $composableBuilder(
+      column: $table.analysisConfidence,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get analysisImageType => $composableBuilder(
+      column: $table.analysisImageType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get calculationSummary => $composableBuilder(
+      column: $table.calculationSummary,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$LoggedFoodsTableAnnotationComposer
@@ -10982,6 +11634,42 @@ class $$LoggedFoodsTableAnnotationComposer
 
   GeneratedColumn<int> get timestamp =>
       $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<int> get calorieMin => $composableBuilder(
+      column: $table.calorieMin, builder: (column) => column);
+
+  GeneratedColumn<int> get calorieMax => $composableBuilder(
+      column: $table.calorieMax, builder: (column) => column);
+
+  GeneratedColumn<double> get proteinMinGrams => $composableBuilder(
+      column: $table.proteinMinGrams, builder: (column) => column);
+
+  GeneratedColumn<double> get proteinMaxGrams => $composableBuilder(
+      column: $table.proteinMaxGrams, builder: (column) => column);
+
+  GeneratedColumn<double> get carbsMinGrams => $composableBuilder(
+      column: $table.carbsMinGrams, builder: (column) => column);
+
+  GeneratedColumn<double> get carbsMaxGrams => $composableBuilder(
+      column: $table.carbsMaxGrams, builder: (column) => column);
+
+  GeneratedColumn<double> get fatMinGrams => $composableBuilder(
+      column: $table.fatMinGrams, builder: (column) => column);
+
+  GeneratedColumn<double> get fatMaxGrams => $composableBuilder(
+      column: $table.fatMaxGrams, builder: (column) => column);
+
+  GeneratedColumn<String> get analysisConfidence => $composableBuilder(
+      column: $table.analysisConfidence, builder: (column) => column);
+
+  GeneratedColumn<String> get analysisImageType => $composableBuilder(
+      column: $table.analysisImageType, builder: (column) => column);
+
+  GeneratedColumn<String> get calculationSummary => $composableBuilder(
+      column: $table.calculationSummary, builder: (column) => column);
 }
 
 class $$LoggedFoodsTableTableManager extends RootTableManager<
@@ -11022,6 +11710,18 @@ class $$LoggedFoodsTableTableManager extends RootTableManager<
             Value<int> fiberGrams = const Value.absent(),
             Value<int?> foodCatalogId = const Value.absent(),
             Value<int> timestamp = const Value.absent(),
+            Value<String> source = const Value.absent(),
+            Value<int?> calorieMin = const Value.absent(),
+            Value<int?> calorieMax = const Value.absent(),
+            Value<double?> proteinMinGrams = const Value.absent(),
+            Value<double?> proteinMaxGrams = const Value.absent(),
+            Value<double?> carbsMinGrams = const Value.absent(),
+            Value<double?> carbsMaxGrams = const Value.absent(),
+            Value<double?> fatMinGrams = const Value.absent(),
+            Value<double?> fatMaxGrams = const Value.absent(),
+            Value<String?> analysisConfidence = const Value.absent(),
+            Value<String?> analysisImageType = const Value.absent(),
+            Value<String?> calculationSummary = const Value.absent(),
           }) =>
               LoggedFoodsCompanion(
             id: id,
@@ -11036,6 +11736,18 @@ class $$LoggedFoodsTableTableManager extends RootTableManager<
             fiberGrams: fiberGrams,
             foodCatalogId: foodCatalogId,
             timestamp: timestamp,
+            source: source,
+            calorieMin: calorieMin,
+            calorieMax: calorieMax,
+            proteinMinGrams: proteinMinGrams,
+            proteinMaxGrams: proteinMaxGrams,
+            carbsMinGrams: carbsMinGrams,
+            carbsMaxGrams: carbsMaxGrams,
+            fatMinGrams: fatMinGrams,
+            fatMaxGrams: fatMaxGrams,
+            analysisConfidence: analysisConfidence,
+            analysisImageType: analysisImageType,
+            calculationSummary: calculationSummary,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -11050,6 +11762,18 @@ class $$LoggedFoodsTableTableManager extends RootTableManager<
             Value<int> fiberGrams = const Value.absent(),
             Value<int?> foodCatalogId = const Value.absent(),
             required int timestamp,
+            Value<String> source = const Value.absent(),
+            Value<int?> calorieMin = const Value.absent(),
+            Value<int?> calorieMax = const Value.absent(),
+            Value<double?> proteinMinGrams = const Value.absent(),
+            Value<double?> proteinMaxGrams = const Value.absent(),
+            Value<double?> carbsMinGrams = const Value.absent(),
+            Value<double?> carbsMaxGrams = const Value.absent(),
+            Value<double?> fatMinGrams = const Value.absent(),
+            Value<double?> fatMaxGrams = const Value.absent(),
+            Value<String?> analysisConfidence = const Value.absent(),
+            Value<String?> analysisImageType = const Value.absent(),
+            Value<String?> calculationSummary = const Value.absent(),
           }) =>
               LoggedFoodsCompanion.insert(
             id: id,
@@ -11064,6 +11788,18 @@ class $$LoggedFoodsTableTableManager extends RootTableManager<
             fiberGrams: fiberGrams,
             foodCatalogId: foodCatalogId,
             timestamp: timestamp,
+            source: source,
+            calorieMin: calorieMin,
+            calorieMax: calorieMax,
+            proteinMinGrams: proteinMinGrams,
+            proteinMaxGrams: proteinMaxGrams,
+            carbsMinGrams: carbsMinGrams,
+            carbsMaxGrams: carbsMaxGrams,
+            fatMinGrams: fatMinGrams,
+            fatMaxGrams: fatMaxGrams,
+            analysisConfidence: analysisConfidence,
+            analysisImageType: analysisImageType,
+            calculationSummary: calculationSummary,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

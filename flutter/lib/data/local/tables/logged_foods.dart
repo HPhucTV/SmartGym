@@ -15,4 +15,16 @@ class LoggedFoods extends Table {
   IntColumn get fiberGrams => integer().withDefault(const Constant(0))();
   IntColumn get foodCatalogId => integer().nullable()();
   IntColumn get timestamp => integer()();
+  TextColumn get source => text().withDefault(const Constant('MANUAL'))();
+  IntColumn get calorieMin => integer().nullable()();
+  IntColumn get calorieMax => integer().nullable()();
+  RealColumn get proteinMinGrams => real().nullable()();
+  RealColumn get proteinMaxGrams => real().nullable()();
+  RealColumn get carbsMinGrams => real().nullable()();
+  RealColumn get carbsMaxGrams => real().nullable()();
+  RealColumn get fatMinGrams => real().nullable()();
+  RealColumn get fatMaxGrams => real().nullable()();
+  TextColumn get analysisConfidence => text().nullable()();
+  TextColumn get analysisImageType => text().nullable()();
+  TextColumn get calculationSummary => text().nullable()();
 }
