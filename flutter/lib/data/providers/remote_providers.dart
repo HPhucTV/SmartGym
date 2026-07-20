@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import '../remote/backend_config.dart';
 import '../remote/coach_explanation_client.dart';
 import '../remote/coach_review_client.dart';
 import '../remote/food_analysis_client.dart';
@@ -24,5 +25,8 @@ final coachReviewClientProvider = Provider<CoachReviewClient>((ref) {
 
 final foodAnalysisClientProvider = Provider<FoodAnalysisClient>((ref) {
   final dio = ref.watch(dioProvider);
-  return DioFoodAnalysisClient(dio: dio);
+  return DioFoodAnalysisClient(
+    dio: dio,
+    endpointProvider: () => BackendConfig.baseUrl,
+  );
 });
