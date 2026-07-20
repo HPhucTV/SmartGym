@@ -15,6 +15,8 @@ The replacement must support both:
 
 A single meal photograph cannot reveal exact weight, hidden oil, sauces, or ingredients. The feature must therefore present an honest estimate, ask for confirmation in familiar household units, and never treat model output as measured truth.
 
+The implementation target is the existing Flutter client under `flutter/`, using Riverpod for state and Drift for local persistence, plus the existing Node.js/Express backend under `server/`.
+
 ## Goals
 
 - Replace barcode scanning in the primary nutrition UI with photo capture.
@@ -32,7 +34,7 @@ A single meal photograph cannot reveal exact weight, hidden oil, sauces, or ingr
 - Estimating medically precise nutrition from an image.
 - Training a custom food-vision model in this release.
 - Using depth sensors, AR volume measurement, or specialized hardware.
-- Storing meal photos in Room or maintaining cloud photo history.
+- Storing meal photos in Drift or maintaining cloud photo history.
 - Adding accounts, cloud sync, or community-contributed food data.
 - Generating workout programs or medical advice from food images.
 - Deleting the legacy barcode backend endpoints in the same release.
@@ -106,7 +108,7 @@ The response status is one of:
 - `READY`; or
 - `UNRECOGNIZED`.
 
-`NEEDS_CONFIRMATION` means the observations are ready for the user to review. `READY` is returned only after the confirmation endpoint has produced a deterministic estimate; it does not mean the result has been saved to Room. Initial image analysis therefore returns `NEEDS_SECOND_IMAGE`, `NEEDS_CONFIRMATION`, or `UNRECOGNIZED`.
+`NEEDS_CONFIRMATION` means the observations are ready for the user to review. `READY` is returned only after the confirmation endpoint has produced a deterministic estimate; it does not mean the result has been saved to Drift. Initial image analysis therefore returns `NEEDS_SECOND_IMAGE`, `NEEDS_CONFIRMATION`, or `UNRECOGNIZED`.
 
 ### Conditional second image
 
@@ -154,15 +156,15 @@ The final review shows:
 
 The user must confirm before any nutrition data is written. The midpoint contributes to daily totals. The minimum, maximum, confidence, source, and calculation summary remain attached to the logged item.
 
-## Android Components
+## Flutter Components
 
 ### `FoodCaptureScreen`
 
-Owns CameraX preview and capture, framing instructions, local quality checks, and recapture actions. It does not call repositories or calculate nutrition.
+Owns preview and capture through Flutter's official camera plugin, framing instructions, local quality checks, metadata-stripping re-encoding, and recapture actions. It does not call repositories or calculate nutrition.
 
-### `FoodPhotoViewModel`
+### `FoodPhotoNotifier`
 
-Exposes immutable screen state:
+Uses Riverpod and exposes immutable screen state:
 
 - `Idle`;
 - `Capturing`;
@@ -183,7 +185,7 @@ Provides focused operations for:
 - adding a requested secondary image; and
 - submitting the user's confirmation.
 
-Network, multipart, and response-parsing details stay behind this interface so ViewModel tests can use a hand-written fake.
+Network, multipart, and response-parsing details stay behind this interface so notifier tests can use a hand-written fake.
 
 ## Backend Components
 
@@ -272,7 +274,7 @@ Stable error codes include:
 
 ## Persistence
 
-Write to Room only after final confirmation. A camera-derived logged food stores:
+Write to Drift only after final confirmation. A camera-derived logged food stores:
 
 - midpoint calories and macros for existing daily totals;
 - minimum and maximum calories and macros;
@@ -281,7 +283,7 @@ Write to Room only after final confirmation. A camera-derived logged food stores
 - image type; and
 - calculation summary.
 
-Raw photos, base64 data, provider prompts, and provider responses are not persisted in Room.
+Raw photos, base64 data, provider prompts, and provider responses are not persisted in Drift.
 
 The schema migration must preserve all existing logged nutrition history.
 
@@ -313,7 +315,7 @@ The schema migration must preserve all existing logged nutrition history.
 ## Compatibility and Migration
 
 - Add the new endpoints instead of changing the existing `/api/analyze-food` response contract.
-- Remove barcode scanning from the primary Android UI when the new flow ships.
+- Remove barcode scanning from the primary Flutter UI when the new flow ships.
 - Keep `/api/analyze-food`, `/api/scan-barcode`, and `/api/register-barcode` temporarily so existing builds are not broken.
 - Do not extend the old barcode cache for new photo analyses.
 - Delete legacy barcode client and backend code only in a later, separately verified cleanup after every supported client uses the new contract.
@@ -331,7 +333,7 @@ The schema migration must preserve all existing logged nutrition history.
 - confirmation validation; and
 - persistence mapping for midpoint, range, confidence, and source.
 
-### ViewModel and Compose tests
+### Notifier and widget tests
 
 - camera consent and permission behavior;
 - first image to second-image request;
@@ -343,7 +345,7 @@ The schema migration must preserve all existing logged nutrition history.
 - cancellation; and
 - confirmation-to-save without duplicate writes.
 
-Camera and network dependencies use fakes in JVM tests. Real camera capture is verified separately on a physical device.
+Camera and network dependencies use fakes in Dart tests. Real camera capture is verified separately on a physical Android device.
 
 ### Backend integration tests
 
@@ -405,12 +407,13 @@ Use structured events with correlation IDs and bounded fields such as image type
 - Only confirmed midpoint values affect daily nutrition totals.
 - The full range, confidence, source, and calculation summary are persisted.
 - Photo analysis fails safely to recapture, retry, or manual entry.
-- The Android app and Gym App backend do not retain images or image metadata after processing; provider-side handling is disclosed separately in consent text.
+- The Flutter client and Gym App backend do not retain images or image metadata after processing; provider-side handling is disclosed separately in consent text.
 - Automated tests cover contracts, calculations, state transitions, persistence, failures, and privacy boundaries.
 - Accuracy is evaluated against the documented release targets before the feature is treated as stable.
 
 ## Official References
 
 - [Gemini image understanding](https://ai.google.dev/gemini-api/docs/image-understanding)
-- [ML Kit text recognition on Android](https://developers.google.com/ml-kit/vision/text-recognition/v2/android)
-- [CameraX image capture](https://developer.android.com/media/camera/camerax/take-photo)
+- [Flutter camera plugin](https://pub.dev/packages/camera)
+- [Dart image library](https://pub.dev/packages/image)
+- [Drift reactive persistence](https://pub.dev/packages/drift)
