@@ -402,8 +402,15 @@ final class FoodPhotoNotifier extends Notifier<FoodPhotoState> {
   }) {
     final current = _mealReviewForEditing();
     if (current == null) return;
+    final usedIds = current.draft.components
+        .map((component) => component.observationId)
+        .toSet();
+    String observationId;
+    do {
+      observationId = 'manual-${++_manualComponentSequence}';
+    } while (usedIds.contains(observationId));
     final component = FoodPhotoMealComponentDraft(
-      observationId: 'manual-${++_manualComponentSequence}',
+      observationId: observationId,
       foodId: foodId,
       nameVi: nameVi,
       portion: portion,

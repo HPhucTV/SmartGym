@@ -111,10 +111,23 @@ class ProfileNotifier extends Notifier<ProfileUiState> {
     }
   }
 
-  void updateFoodPhotoUploadConsent(bool consent) {
+  Future<void> updateFoodPhotoUploadConsent(bool consent) async {
     final s = state;
-    if (s is ProfileUiStateContent) {
-      state = s.copyWith(foodPhotoUploadConsent: consent);
+    if (s is! ProfileUiStateContent) return;
+    state = s.copyWith(foodPhotoUploadConsent: consent, saveError: null);
+    if (consent) return;
+
+    try {
+      await ref.read(foodPhotoConsentRepositoryProvider).setConsent(false);
+    } catch (_) {
+      final current = state;
+      if (current is ProfileUiStateContent &&
+          !current.foodPhotoUploadConsent) {
+        state = current.copyWith(
+          foodPhotoUploadConsent: true,
+          saveError: 'Không thể thu hồi quyền tải ảnh. Vui lòng thử lại.',
+        );
+      }
     }
   }
 

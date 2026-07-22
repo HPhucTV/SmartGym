@@ -175,6 +175,24 @@ void main() {
       expect(added.components, hasLength(2));
     });
 
+    test('manual component id skips an existing provider id', () async {
+      client.onStart = (_) async => _mealReview(componentId: 'manual-1');
+      await harness.startPrimary(_upload(1));
+
+      harness.notifier.addMealComponent(nameVi: 'Rau luộc');
+
+      final components =
+          (harness.state as FoodPhotoReviewingMeal).draft.components;
+      expect(
+        components.map((component) => component.observationId),
+        ['manual-1', 'manual-2'],
+      );
+      expect(
+        components.map((component) => component.observationId).toSet(),
+        hasLength(2),
+      );
+    });
+
     test('label basis, facts, serving size, and consumed edits are immutable',
         () async {
       client.onStart = (_) async => _labelReview(incomplete: true);
@@ -1074,6 +1092,7 @@ PreparedUpload _upload(int seed) => PreparedUpload(
 FoodAnalysisReview _mealReview({
   String status = 'NEEDS_CONFIRMATION',
   String analysisId = 'analysis-1',
+  String componentId = 'component-1',
   bool manualPortion = false,
   bool duplicateFoodId = false,
   DateTime? expiresAt,
@@ -1084,7 +1103,7 @@ FoodAnalysisReview _mealReview({
     'status': status,
     'components': [
       {
-        'id': 'component-1',
+        'id': componentId,
         'nameVi': 'Cơm trắng',
         'matchedFoodId': 'white-rice',
         'confidence': manualPortion ? 0.4 : 0.91,

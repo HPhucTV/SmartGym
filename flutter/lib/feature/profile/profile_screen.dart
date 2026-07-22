@@ -600,9 +600,9 @@ class _ProfileContentState extends ConsumerState<ProfileContent> {
                             key: const Key('food-photo-upload-consent'),
                             value: widget.state.foodPhotoUploadConsent,
                             activeColor: AppColors.energyOrange,
-                            onChanged: (val) {
+                            onChanged: (val) async {
                               if (val != null) {
-                                ref.read(profileNotifierProvider.notifier).updateFoodPhotoUploadConsent(val);
+                                await ref.read(profileNotifierProvider.notifier).updateFoodPhotoUploadConsent(val);
                               }
                             },
                           ),

@@ -11,9 +11,12 @@ import 'package:gym_app/data/local/database.dart';
 import 'package:gym_app/data/providers/data_providers.dart';
 import 'package:gym_app/data/repositories/workout_repository.dart';
 import 'package:gym_app/data/repositories/nutrition_repository.dart';
+import 'package:gym_app/data/repositories/food_photo_consent_repository.dart';
 import 'package:gym_app/feature/profile/profile_ui_state.dart';
 import 'package:gym_app/feature/profile/profile_screen.dart';
 import 'package:gym_app/feature/profile/profile_view_model.dart';
+import 'package:gym_app/feature/nutrition/photo/food_photo_notifier.dart';
+import 'package:gym_app/feature/nutrition/photo/food_photo_state.dart';
 import 'package:gym_app/ui/theme/theme.dart';
 
 class MockWorkoutRepository extends Mock implements WorkoutRepository {}
@@ -64,11 +67,16 @@ void main() {
     await database.close();
   });
 
-  ProviderContainer createContainer() {
+  ProviderContainer createContainer({
+    FoodPhotoConsentRepository? consentRepository,
+  }) {
     final container = ProviderContainer(
       overrides: [
         gymDatabaseProvider.overrideWithValue(database),
         sharedPreferencesProvider.overrideWithValue(preferences),
+        if (consentRepository != null)
+          foodPhotoConsentRepositoryProvider
+              .overrideWithValue(consentRepository),
         workoutRepositoryProvider.overrideWithValue(mockWorkoutRepo),
         nutritionRepositoryProvider.overrideWithValue(mockNutritionRepo),
       ],
@@ -154,6 +162,67 @@ void main() {
     expect(state.validationErrors, isNotEmpty);
   });
 
+  test('revocation persists and blocks photos despite invalid profile fields',
+      () async {
+    final container = createContainer();
+    await container
+        .read(foodPhotoConsentRepositoryProvider)
+        .setConsent(true);
+    container.read(profileNotifierProvider);
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    final notifier = container.read(profileNotifierProvider.notifier);
+    notifier.updateHeight('invalid');
+    notifier.updateTargetWeight('-1');
+    await notifier.updateFoodPhotoUploadConsent(false);
+    notifier.saveProfile();
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    final profileState =
+        container.read(profileNotifierProvider) as ProfileUiStateContent;
+    expect(profileState.validationErrors, isNotEmpty);
+    expect(profileState.foodPhotoUploadConsent, isFalse);
+    expect(
+      await container.read(foodPhotoConsentRepositoryProvider).hasConsent(),
+      isFalse,
+    );
+
+    final subscription = container.listen(
+      foodPhotoNotifierProvider,
+      (_, __) {},
+      fireImmediately: true,
+    );
+    addTearDown(subscription.close);
+    expect(
+      await container
+          .read(foodPhotoNotifierProvider.notifier)
+          .requestPrimaryCapture(),
+      isNull,
+    );
+    expect(
+      container.read(foodPhotoNotifierProvider),
+      isA<FoodPhotoConsentRequired>(),
+    );
+  });
+
+  test('failed revocation keeps consent enabled and reports the failure',
+      () async {
+    final container = createContainer(
+      consentRepository: _FailingConsentRepository(),
+    );
+    container.read(profileNotifierProvider);
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    await container
+        .read(profileNotifierProvider.notifier)
+        .updateFoodPhotoUploadConsent(false);
+
+    final state =
+        container.read(profileNotifierProvider) as ProfileUiStateContent;
+    expect(state.foodPhotoUploadConsent, isTrue);
+    expect(state.saveError, contains('thu hồi'));
+  });
+
   testWidgets('profile presents informed dedicated food-photo consent copy',
       (tester) async {
     await tester.pumpWidget(ProviderScope(
@@ -183,4 +252,15 @@ void main() {
     expect(find.textContaining('thu hồi quyền này'), findsOneWidget);
     expect(find.textContaining('tiếp tục nhập tay'), findsOneWidget);
   });
+}
+
+final class _FailingConsentRepository
+    implements FoodPhotoConsentRepository {
+  @override
+  Future<bool> hasConsent() async => true;
+
+  @override
+  Future<void> setConsent(bool consent) async {
+    throw StateError('disk unavailable');
+  }
 }
