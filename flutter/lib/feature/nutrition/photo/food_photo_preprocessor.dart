@@ -110,24 +110,25 @@ _PreparedPixels _preparePixels(Uint8List sourceBytes) {
     );
   }
 
-  // Downscale before orientation baking and channel normalization so no
-  // second full-resolution copy is needed for ordinary camera captures.
-  final resizedDecoded = _resizeToLongEdge(
-    decoded,
+  // Bake before resizing because image.copyResize also interprets EXIF
+  // orientation. Clearing the tag prevents a second implicit transform.
+  final oriented = img.bakeOrientation(decoded)
+    ..exif.imageIfd.orientation = null;
+  final resizedOriented = _resizeToLongEdge(
+    oriented,
     DeterministicFoodPhotoPreprocessor.maximumLongEdgePixels,
   );
-  final oriented = img.bakeOrientation(resizedDecoded);
   final issues = <PhotoQualityIssue>{};
-  if (oriented.width <
+  if (resizedOriented.width <
           DeterministicFoodPhotoPreprocessor.minimumDimensionPixels ||
-      oriented.height <
+      resizedOriented.height <
           DeterministicFoodPhotoPreprocessor.minimumDimensionPixels) {
     issues.add(PhotoQualityIssue.tooSmall);
   }
 
   // image 4.8 decodes PNG 16-bit samples as uint16. Normalize through the
   // supported uint8 RGBA representation before alpha compositing.
-  final normalized = oriented.convert(
+  final normalized = resizedOriented.convert(
     format: img.Format.uint8,
     numChannels: 4,
     noAnimation: true,

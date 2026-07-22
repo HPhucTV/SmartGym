@@ -189,11 +189,16 @@ pixel, lifecycle, manifest, memory, and occlusion edge cases.
   decoding. This follows the package API contract that `decodeFrame(0)` is the
   single frame for non-animated WebP:
   https://pub.dev/documentation/image/latest/image/WebPDecoder-class.html
-- Decoded images are resized before orientation baking, then converted through
+- Decoded images have EXIF orientation baked before resizing, and the
+  orientation tag is cleared before `copyResize` so the image package cannot
+  apply the transform a second time. They are then converted through
   `Format.uint8`/4-channel RGBA before compositing onto white. This prevents
   16-bit channel values and non-alpha `a == 0` from leaking into alpha math.
-  Tests cover transparent 8-bit RGBA plus 16-bit RGB and RGBA PNG colors and
-  hidden RGB. The conversion API is documented here:
+  Tests cover real 2200x900 WebP inputs with EXIF orientation 6 and 8,
+  transparent 8-bit RGBA, plus 16-bit RGB and RGBA PNG colors and hidden RGB.
+  The orientation regression first failed with a 1600px-wide landscape output
+  instead of the expected 655x1600 portrait output. The conversion API is
+  documented here:
   https://pub.dev/documentation/image/latest/image/Image-class.html
 - `FoodCaptureScreen` now captures its lifecycle generation at the start of a
   take/preprocess operation. Pause, resume, close/cancel, and dispose invalidate
@@ -210,10 +215,10 @@ pixel, lifecycle, manifest, memory, and occlusion edge cases.
 - The practical decode cap is now 4096 px per dimension, 8,000,000 pixels,
   32 MiB estimated decoded pixel storage, and a 15 MiB source-byte cap. PNG
   headers are checked before decode; 16-bit RGBA is budgeted at 8 bytes/pixel.
-  Resizing before orientation and normalization avoids multiple full-resolution
-  copies. The reportable worst case is approximately 32 MiB decoded + 20 MiB
-  resized/oriented + 10 MiB normalized + 8 MiB RGB, before a bounded JPEG
-  output, rather than retaining parallel full-resolution copies.
+  Correct orientation requires one bounded full-resolution bake before resize.
+  The reportable worst case is approximately 15 MiB source + 32 MiB decoded +
+  32 MiB oriented + 20 MiB resized + 10 MiB normalized + 8 MiB RGB, before a
+  bounded JPEG output, remaining near the intended 128 MiB process budget.
 - Occlusion detection no longer unconditionally exempts a near-full-frame
   component. It combines border/corner geometry with a named 20% bounding-box
   occupancy threshold, preserving sparse full-frame label strokes while
@@ -229,5 +234,5 @@ powershell -NoProfile -File .\tool\verify_camera_manifest.ps1
 powershell -NoProfile -File .\tool\verify_camera_manifest.ps1 -RequireMerged
 ```
 
-Result: preprocessing 22/22, capture-screen 11/11, manifest 3/3, and both
+Result: preprocessing 24/24, capture-screen 11/11, manifest 3/3, and both
 manifest verifier modes passed. No physical-device camera behavior is claimed.
