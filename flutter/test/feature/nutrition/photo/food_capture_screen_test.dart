@@ -169,6 +169,103 @@ void main() {
     expect(find.text('Open'), findsOneWidget);
   });
 
+  testWidgets(
+      'pause during take invalidates the stale capture and allows a new one',
+      (tester) async {
+    final pendingCapture = Completer<Uint8List>();
+    final gateway = _FakeGateway(
+      pendingCapture: pendingCapture,
+      captureResponses: [
+        Future.value(Uint8List.fromList([4, 5, 6])),
+      ],
+    );
+    final upload = _upload();
+    final preprocessor = _FakePreprocessor(
+      preparationResponses: [
+        PhotoPreparationResult(upload: upload, issues: const {}),
+        PhotoPreparationResult(upload: upload, issues: const {}),
+      ],
+    );
+    Object? result;
+
+    await tester.pumpWidget(
+      _app(
+        gateway: gateway,
+        preprocessor: preprocessor,
+        onResult: (value) => result = value,
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('capture-food-photo')));
+    await tester.pump();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(milliseconds: 100));
+    pendingCapture.complete(Uint8List.fromList([1, 2, 3]));
+    await tester.pumpAndSettle();
+
+    expect(result, isNull);
+    expect(preprocessor.calls, 0);
+    await tester.tap(find.byKey(const Key('capture-food-photo')));
+    await tester.pumpAndSettle();
+
+    expect(result, same(upload));
+    expect(gateway.captureCalls, 2);
+  });
+
+  testWidgets(
+      'pause during preprocessing invalidates the stale result and allows a new one',
+      (tester) async {
+    final gateway = _FakeGateway(
+      captureResponses: [
+        Future.value(Uint8List.fromList([1, 2, 3])),
+        Future.value(Uint8List.fromList([4, 5, 6])),
+      ],
+    );
+    final pendingPreparation = Completer<PhotoPreparationResult>();
+    final upload = _upload();
+    final preprocessor = _FakePreprocessor(
+      pendingPreparation: pendingPreparation,
+      preparationResponses: [
+        PhotoPreparationResult(upload: upload, issues: const {}),
+        PhotoPreparationResult(upload: upload, issues: const {}),
+      ],
+    );
+    Object? result;
+
+    await tester.pumpWidget(
+      _app(
+        gateway: gateway,
+        preprocessor: preprocessor,
+        onResult: (value) => result = value,
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('capture-food-photo')));
+    await tester.pump();
+    expect(preprocessor.calls, 1);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(milliseconds: 100));
+    pendingPreparation.complete(
+      PhotoPreparationResult(upload: upload, issues: const {}),
+    );
+    await tester.pumpAndSettle();
+
+    expect(result, isNull);
+    await tester.tap(find.byKey(const Key('capture-food-photo')));
+    await tester.pumpAndSettle();
+
+    expect(result, same(upload));
+    expect(gateway.captureCalls, 2);
+  });
+
   testWidgets('pause and resume during initialize keeps the newest lifecycle',
       (tester) async {
     final pendingInitialize = Completer<void>();
@@ -229,6 +326,7 @@ final class _FakeGateway implements FoodCameraGateway {
   final Object? initializeError;
   final Completer<void>? pendingInitialize;
   final Completer<Uint8List>? pendingCapture;
+  final List<Future<Uint8List>>? captureResponses;
   int captureCalls = 0;
   int disposeCalls = 0;
   int initializeCalls = 0;
@@ -237,6 +335,7 @@ final class _FakeGateway implements FoodCameraGateway {
     this.initializeError,
     this.pendingInitialize,
     this.pendingCapture,
+    this.captureResponses,
   });
 
   @override
@@ -255,8 +354,17 @@ final class _FakeGateway implements FoodCameraGateway {
   @override
   Future<Uint8List> takePicture() {
     captureCalls++;
-    return pendingCapture?.future ??
-        Future.value(Uint8List.fromList([1, 2, 3]));
+    if (captureCalls == 1 && pendingCapture != null) {
+      return pendingCapture!.future;
+    }
+    final responses = captureResponses;
+    final responseIndex = captureCalls - 2;
+    if (responses != null &&
+        responseIndex >= 0 &&
+        responseIndex < responses.length) {
+      return responses[responseIndex];
+    }
+    return Future.value(Uint8List.fromList([1, 2, 3]));
   }
 
   @override
@@ -268,14 +376,36 @@ final class _FakeGateway implements FoodCameraGateway {
 final class _FakePreprocessor implements FoodPhotoPreprocessor {
   final PreparedUpload? upload;
   final Set<PhotoQualityIssue> issues;
+  final Completer<PhotoPreparationResult>? pendingPreparation;
+  final List<PhotoPreparationResult>? preparationResponses;
+  int calls = 0;
 
-  const _FakePreprocessor({
+  _FakePreprocessor({
     this.upload,
     this.issues = const {PhotoQualityIssue.tooBlurry},
+    this.pendingPreparation,
+    this.preparationResponses,
   });
 
   @override
   Future<PhotoPreparationResult> prepare(Uint8List sourceBytes) async {
+    calls++;
+    if (calls == 1 && pendingPreparation != null) {
+      return pendingPreparation!.future;
+    }
+    final responses = preparationResponses;
+    final responseIndex = calls - 1;
+    if (responses != null &&
+        responseIndex >= 0 &&
+        responseIndex < responses.length) {
+      return responses[responseIndex];
+    }
     return PhotoPreparationResult(upload: upload, issues: issues);
   }
 }
+
+PreparedUpload _upload() => PreparedUpload(
+      bytes: Uint8List.fromList([0xff, 0xd8, 0xff, 0xd9]),
+      mimeType: 'image/jpeg',
+      filename: 'food-analysis.jpg',
+    );

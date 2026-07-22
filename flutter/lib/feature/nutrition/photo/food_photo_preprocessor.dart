@@ -36,15 +36,20 @@ final class DeterministicFoodPhotoPreprocessor
     implements FoodPhotoPreprocessor {
   static const int minimumDimensionPixels = 640;
   static const int maximumLongEdgePixels = 1600;
-  static const int maximumSourceBytes = 30 * 1024 * 1024;
-  static const int maximumDecodedDimensionPixels = 12000;
-  static const int maximumDecodedPixels = 20 * 1000 * 1000;
+  // The decoder can coexist briefly with a resized/oriented copy and a fresh
+  // RGB copy. These bounds keep the worst-case 16-bit RGBA path around a
+  // low-memory Android device's practical heap budget before JPEG encoding.
+  static const int maximumSourceBytes = 15 * 1024 * 1024;
+  static const int maximumDecodedDimensionPixels = 4096;
+  static const int maximumDecodedPixels = 8 * 1000 * 1000;
+  static const int maximumDecodedPixelBytes = 32 * 1024 * 1024;
   static const int analysisLongEdgePixels = 256;
   static const double minimumMeanLuminance = 35;
   static const double minimumLaplacianVariance = 18;
   static const int clippedDarkLuminance = 6;
   static const int clippedLightLuminance = 249;
   static const double minimumClippedComponentRatio = 0.12;
+  static const double minimumClippedBoundingBoxOccupancy = 0.20;
   static const int jpegQuality = 85;
   static const List<int> jpegFallbackQualities = [75, 65, 55];
   static const List<int> jpegFallbackLongEdges = [1440, 1280, 1024];
@@ -105,7 +110,13 @@ _PreparedPixels _preparePixels(Uint8List sourceBytes) {
     );
   }
 
-  final oriented = img.bakeOrientation(decoded);
+  // Downscale before orientation baking and channel normalization so no
+  // second full-resolution copy is needed for ordinary camera captures.
+  final resizedDecoded = _resizeToLongEdge(
+    decoded,
+    DeterministicFoodPhotoPreprocessor.maximumLongEdgePixels,
+  );
+  final oriented = img.bakeOrientation(resizedDecoded);
   final issues = <PhotoQualityIssue>{};
   if (oriented.width <
           DeterministicFoodPhotoPreprocessor.minimumDimensionPixels ||
@@ -114,7 +125,14 @@ _PreparedPixels _preparePixels(Uint8List sourceBytes) {
     issues.add(PhotoQualityIssue.tooSmall);
   }
 
-  final pixels = _freshPixelImage(oriented);
+  // image 4.8 decodes PNG 16-bit samples as uint16. Normalize through the
+  // supported uint8 RGBA representation before alpha compositing.
+  final normalized = oriented.convert(
+    format: img.Format.uint8,
+    numChannels: 4,
+    noAnimation: true,
+  );
+  final pixels = _freshPixelImage(normalized);
   final analysis = _analysisImage(pixels);
   final luminance = _luminanceValues(analysis);
   final mean =
@@ -134,8 +152,7 @@ _PreparedPixels _preparePixels(Uint8List sourceBytes) {
   }
 
   final resized = _resizeForUpload(pixels);
-  final sanitized = _freshPixelImage(resized);
-  final encoded = _encodeUnderUploadLimit(sanitized);
+  final encoded = _encodeUnderUploadLimit(resized);
   if (encoded == null) {
     return const _PreparedPixels(
       jpegBytes: null,
@@ -178,13 +195,11 @@ img.Image _resizeToLongEdge(img.Image source, int longEdge) {
   final currentLongEdge = math.max(source.width, source.height);
   if (currentLongEdge <= longEdge) return source;
   final scale = longEdge / currentLongEdge;
-  return _freshPixelImage(
-    img.copyResize(
-      source,
-      width: math.max(1, (source.width * scale).round()),
-      height: math.max(1, (source.height * scale).round()),
-      interpolation: img.Interpolation.linear,
-    ),
+  return img.copyResize(
+    source,
+    width: math.max(1, (source.width * scale).round()),
+    height: math.max(1, (source.height * scale).round()),
+    interpolation: img.Interpolation.linear,
   );
 }
 
@@ -193,7 +208,7 @@ img.Image? _decodeBounded(Uint8List sourceBytes) {
   if (decoder == null) return null;
   final info = decoder.startDecode(sourceBytes);
   if (info == null ||
-      info.numFrames != 1 ||
+      !_isSingleSupportedFrame(decoder, info) ||
       info.width <= 0 ||
       info.height <= 0 ||
       info.width >
@@ -201,10 +216,40 @@ img.Image? _decodeBounded(Uint8List sourceBytes) {
       info.height >
           DeterministicFoodPhotoPreprocessor.maximumDecodedDimensionPixels ||
       info.width * info.height >
-          DeterministicFoodPhotoPreprocessor.maximumDecodedPixels) {
+          DeterministicFoodPhotoPreprocessor.maximumDecodedPixels ||
+      info.width * info.height * _decodedBytesPerPixel(decoder) >
+          DeterministicFoodPhotoPreprocessor.maximumDecodedPixelBytes) {
     return null;
   }
   return decoder.decodeFrame(0);
+}
+
+bool _isSingleSupportedFrame(img.Decoder decoder, img.DecodeInfo info) {
+  if (decoder is img.WebPDecoder) {
+    final webp = info as img.WebPInfo;
+    // image 4.8 reports zero frames for valid static WebP bitstreams.
+    return !webp.hasAnimation;
+  }
+  if (decoder is img.PngDecoder) {
+    final png = info as img.PngInfo;
+    return !png.isAnimated && png.numFrames == 1;
+  }
+  return info.numFrames == 1;
+}
+
+int _decodedBytesPerPixel(img.Decoder decoder) {
+  if (decoder is! img.PngDecoder) return 4;
+  final info = decoder.info;
+  final channels = switch (info.colorType) {
+    img.PngColorType.grayscale => 1,
+    img.PngColorType.rgb => 3,
+    img.PngColorType.indexed => 4,
+    img.PngColorType.grayscaleAlpha => 2,
+    img.PngColorType.rgba => 4,
+    _ => 4,
+  };
+  final bytesPerChannel = info.bits > 8 ? 2 : 1;
+  return channels * bytesPerChannel;
 }
 
 img.Decoder? _decoderForSupportedFormat(Uint8List bytes) {
@@ -243,13 +288,13 @@ img.Image _freshPixelImage(img.Image source) {
     numChannels: 3,
   );
   for (final pixel in source) {
-    final alpha = pixel.a / 255;
+    final alpha = pixel.aNormalized;
     fresh.setPixelRgb(
       pixel.x,
       pixel.y,
-      (pixel.r * alpha) + (255 * (1 - alpha)),
-      (pixel.g * alpha) + (255 * (1 - alpha)),
-      (pixel.b * alpha) + (255 * (1 - alpha)),
+      (pixel.rNormalized * 255 * alpha) + (255 * (1 - alpha)),
+      (pixel.gNormalized * 255 * alpha) + (255 * (1 - alpha)),
+      (pixel.bNormalized * 255 * alpha) + (255 * (1 - alpha)),
     );
   }
   return fresh;
@@ -385,14 +430,21 @@ bool _hasFramingComponent(List<bool> clipped, int width, int height) {
     final componentRatio = componentSize / total;
     final componentWidthRatio = (maxX - minX + 1) / width;
     final componentHeightRatio = (maxY - minY + 1) / height;
-    final fillsWholeFrame =
-        componentWidthRatio > 0.92 && componentHeightRatio > 0.92;
-    if (fillsWholeFrame || componentRatio > 0.75) continue;
+    if (componentRatio > 0.75) continue;
     final touchesCorner =
         (minX == 0 || maxX == width - 1) && (minY == 0 || maxY == height - 1);
     final isBorderBand =
         componentWidthRatio >= 0.30 || componentHeightRatio >= 0.30;
-    if (touchesCorner || isBorderBand) return true;
+    final boundingBoxArea = (maxX - minX + 1) * (maxY - minY + 1);
+    final boundingBoxOccupancy = componentSize / boundingBoxArea;
+    final denseSpanningObstruction = boundingBoxOccupancy >=
+            DeterministicFoodPhotoPreprocessor
+                .minimumClippedBoundingBoxOccupancy &&
+        (touchesCorner || isBorderBand) &&
+        (touchesCorner ||
+            componentWidthRatio >= 0.85 ||
+            componentHeightRatio >= 0.85);
+    if (denseSpanningObstruction) return true;
   }
   return false;
 }

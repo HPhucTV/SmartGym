@@ -95,6 +95,7 @@ final class _FoodCaptureScreenState extends State<FoodCaptureScreen>
       setState(() {
         _initializing = false;
         _ready = false;
+        _capturing = false;
       });
     }
   }
@@ -105,6 +106,7 @@ final class _FoodCaptureScreenState extends State<FoodCaptureScreen>
       setState(() {
         _initializing = false;
         _ready = false;
+        _capturing = false;
       });
     }
     await widget.gateway.dispose();
@@ -112,16 +114,24 @@ final class _FoodCaptureScreenState extends State<FoodCaptureScreen>
 
   Future<void> _capture() async {
     if (!_ready || _capturing) return;
+    final generation = _lifecycleGeneration;
     setState(() {
       _capturing = true;
       _recaptureMessage = null;
     });
 
+    var didPop = false;
     try {
       final sourceBytes = await widget.gateway.takePicture();
+      if (!mounted || generation != _lifecycleGeneration) return;
       final result = await widget.preprocessor.prepare(sourceBytes);
-      if (!mounted) return;
+      if (!mounted || generation != _lifecycleGeneration) return;
       if (result.accepted) {
+        _lifecycleGeneration++;
+        didPop = true;
+        setState(() {
+          _capturing = false;
+        });
         Navigator.of(context).pop<PreparedUpload>(result.upload);
         return;
       }
@@ -129,19 +139,19 @@ final class _FoodCaptureScreenState extends State<FoodCaptureScreen>
         _recaptureMessage = _messageForIssues(result.issues);
       });
     } on FoodCameraException catch (error) {
-      if (!mounted) return;
+      if (!mounted || generation != _lifecycleGeneration) return;
       setState(() {
         _recaptureMessage = error.failure == FoodCameraFailure.permissionDenied
             ? 'Ứng dụng cần quyền camera để chụp món ăn hoặc nhãn dinh dưỡng.'
             : 'Không thể chụp ảnh lúc này. Hãy thử chụp lại.';
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || generation != _lifecycleGeneration) return;
       setState(() {
         _recaptureMessage = 'Không thể chụp ảnh lúc này. Hãy thử chụp lại.';
       });
     } finally {
-      if (mounted) {
+      if (!didPop && mounted && generation == _lifecycleGeneration) {
         setState(() {
           _capturing = false;
         });
@@ -176,7 +186,7 @@ final class _FoodCaptureScreenState extends State<FoodCaptureScreen>
         leading: IconButton(
           key: const Key('close-food-camera'),
           tooltip: 'Đóng',
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _close,
           icon: const Icon(Icons.close),
         ),
         title: Text(
@@ -253,6 +263,12 @@ final class _FoodCaptureScreenState extends State<FoodCaptureScreen>
         ),
       ),
     );
+  }
+
+  void _close() {
+    _lifecycleGeneration++;
+    _capturing = false;
+    Navigator.of(context).pop();
   }
 
   Widget _buildCameraArea() {

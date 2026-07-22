@@ -175,3 +175,59 @@ Final review verification:
   Task 6 finding;
 - final debug APK build: successful;
 - post-build merged-manifest permission verification: successful.
+
+## Final hardening fixes (2026-07-22)
+
+The follow-up review added regression coverage and bounded fixes for decoder,
+pixel, lifecycle, manifest, memory, and occlusion edge cases.
+
+- `image 4.8.0`'s `WebPDecoder.startDecode` can report `numFrames == 0` for
+  valid static lossless/lossy WebP. The preprocessor now accepts WebP when
+  `WebPInfo.hasAnimation == false`, while rejecting animated WebP; PNG uses
+  `PngInfo.isAnimated` to reject APNG. A real 800x800 static WebP fixture is
+  decoded and accepted, and an animated PNG fixture is rejected before frame
+  decoding. This follows the package API contract that `decodeFrame(0)` is the
+  single frame for non-animated WebP:
+  https://pub.dev/documentation/image/latest/image/WebPDecoder-class.html
+- Decoded images are resized before orientation baking, then converted through
+  `Format.uint8`/4-channel RGBA before compositing onto white. This prevents
+  16-bit channel values and non-alpha `a == 0` from leaking into alpha math.
+  Tests cover transparent 8-bit RGBA plus 16-bit RGB and RGBA PNG colors and
+  hidden RGB. The conversion API is documented here:
+  https://pub.dev/documentation/image/latest/image/Image-class.html
+- `FoodCaptureScreen` now captures its lifecycle generation at the start of a
+  take/preprocess operation. Pause, resume, close/cancel, and dispose invalidate
+  that generation; stale bytes/results cannot navigate or mutate a newer
+  capture state. Deterministic widget tests cover pause during take and pause
+  during preprocessing followed by a new successful capture. The camera plugin
+  explicitly requires app-owned lifecycle handling:
+  https://pub.dev/packages/camera#handling-lifecycle-states
+- The source and merged-manifest verifier now parses XML and requires positive
+  `CAMERA` and `INTERNET` permissions while rejecting microphone and legacy
+  external-storage permissions. Dart tests include missing-camera and
+  forbidden-microphone negative fixtures; the PowerShell helper supports
+  explicit source/merged fixture paths for repeatable verifier checks.
+- The practical decode cap is now 4096 px per dimension, 8,000,000 pixels,
+  32 MiB estimated decoded pixel storage, and a 15 MiB source-byte cap. PNG
+  headers are checked before decode; 16-bit RGBA is budgeted at 8 bytes/pixel.
+  Resizing before orientation and normalization avoids multiple full-resolution
+  copies. The reportable worst case is approximately 32 MiB decoded + 20 MiB
+  resized/oriented + 10 MiB normalized + 8 MiB RGB, before a bounded JPEG
+  output, rather than retaining parallel full-resolution copies.
+- Occlusion detection no longer unconditionally exempts a near-full-frame
+  component. It combines border/corner geometry with a named 20% bounding-box
+  occupancy threshold, preserving sparse full-frame label strokes while
+  rejecting thick diagonal/spanning obstructions.
+
+Focused final-fix verification:
+
+```powershell
+flutter test test/feature/nutrition/photo/food_photo_preprocessor_test.dart
+flutter test test/feature/nutrition/photo/food_capture_screen_test.dart
+flutter test test/feature/nutrition/photo/food_manifest_permissions_test.dart
+powershell -NoProfile -File .\tool\verify_camera_manifest.ps1
+powershell -NoProfile -File .\tool\verify_camera_manifest.ps1 -RequireMerged
+```
+
+Result: preprocessing 22/22, capture-screen 11/11, manifest 3/3, and both
+manifest verifier modes passed. No physical-device camera behavior is claimed.
