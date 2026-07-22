@@ -19,6 +19,8 @@ local.properties
 .vscode/
 server/.env
 server/node_modules/
+server/evaluation/private/
+server/evaluation/results/
 /.worktrees/
 *.jks
 *.xlsx

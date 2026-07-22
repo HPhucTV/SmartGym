@@ -95,3 +95,40 @@ Dự án sử dụng công cụ xây dựng Gradle tiêu chuẩn. Các lệnh CM
 # Chạy kiểm thử giao diện và tích hợp trên thiết bị/trình giả lập (Instrumented Tests)
 .\gradlew.bat connectedAndroidTest
 ```
+
+---
+
+## Phân tích ảnh món ăn và nhãn dinh dưỡng (Thử nghiệm)
+
+Ứng dụng Flutter có luồng `Chụp món ăn` để nhận diện món thường tại quán hoặc đọc nhãn dinh dưỡng. Kết quả AI chỉ là quan sát ban đầu: người dùng luôn phải xác nhận món, khẩu phần hoặc trường trên nhãn trước khi backend tính toán bằng dữ liệu đã duyệt. Không có bước tự động lưu; nhập thủ công vẫn là fallback khi không đồng ý gửi ảnh, ảnh không rõ, dịch vụ lỗi hoặc dữ liệu món chưa được hỗ trợ.
+
+Giá trị được hiển thị dưới dạng khoảng `min / mid / max` vì khẩu phần gia dụng, dầu, sốt và phần món bị che không thể suy ra chính xác từ một ảnh. Tổng dinh dưỡng đã lưu dùng midpoint nhưng vẫn giữ audit metadata và khoảng gốc.
+
+### Backend và endpoint
+
+```powershell
+cd server
+npm ci
+Copy-Item .env.example .env  # hoặc tự tạo server/.env cục bộ
+# đặt GEMINI_API_KEY; GEMINI_MODEL là tùy chọn
+npm start
+```
+
+`server/.env` không được commit. Các endpoint ảnh mới:
+
+| Endpoint | Mục đích |
+|---|---|
+| `GET /api/food-analyses/foods` | Danh mục món và capability khẩu phần công khai |
+| `POST /api/food-analyses` | Gửi multipart `primaryImage`, tạo phiên review |
+| `POST /api/food-analyses/:analysisId/images` | Gửi multipart `secondaryImage` khi được yêu cầu |
+| `POST /api/food-analyses/:analysisId/confirmations` | Gửi xác nhận typed và nhận khoảng dinh dưỡng deterministic |
+
+Backend xử lý ảnh trong memory, xóa buffer sau request và chỉ giữ observation của phiên tối đa 15 phút. Tuy vậy ảnh vẫn được gửi từ backend tới AI provider. Trước lần gửi đầu tiên, sản phẩm phải có **consent riêng, rõ ràng cho ảnh món ăn**, nêu việc upload tới backend/provider và retention/chính sách hiện hành của provider. Consent `cloudAiConsent` chung cho dữ liệu chỉ số không đủ để đại diện cho việc gửi ảnh; nếu chưa có consent riêng thì phải chặn camera và đưa người dùng sang nhập thủ công/cài đặt phù hợp.
+
+Không mô tả provider là “không lưu ảnh” nếu deployment chưa kiểm chứng đúng policy/retention của model và tài khoản đang dùng. Khi provider hoặc chính sách thay đổi, disclosure phải được cập nhật trước khi bật luồng ảnh.
+
+### Gate độ chính xác riêng tư
+
+Hướng dẫn manifest, provenance/license, target và lệnh chạy nằm tại [`server/evaluation/README.md`](server/evaluation/README.md). Ảnh đánh giá, manifest thật và báo cáo đều bị loại khỏi Git. Tính năng giữ badge **“Thử nghiệm”** (`foodPhotoAnalysisStable = false`) nếu chưa có tập được cấp quyền gồm tối thiểu 30 món + 20 nhãn, hoặc chưa có báo cáo theo ngày đạt toàn bộ accuracy gate và Flutter gate `automatic saves = 0`.
+
+Các route cũ như `POST /api/analyze-food`, `GET /api/scan-barcode` và `POST /api/register-barcode` chỉ còn để tương thích tạm thời với build cũ; chúng không phải entry point chính của UI mới và chưa được xóa trong đợt migration này.

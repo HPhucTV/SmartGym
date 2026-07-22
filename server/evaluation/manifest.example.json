@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "caseId": "meal-001",
+      "imageType": "MEAL",
+      "primaryImage": "images/meal-001-primary.jpg",
+      "secondaryImage": {
+        "path": "images/meal-001-side.jpg",
+        "captureReason": "SIDE_ANGLE"
+      },
+      "provenance": {
+        "source": "REPLACE_WITH_CAPTURE_SOURCE",
+        "license": "REPLACE_WITH_LICENSE_OR_SIGNED_PERMISSION",
+        "licenseReference": "REPLACE_WITH_PRIVATE_RELEASE_OR_LICENSE_REFERENCE",
+        "collectedAt": "2026-07-22"
+      },
+      "groundTruth": {
+        "majorComponentFoodIds": [
+          "white-rice",
+          "chicken-breast"
+        ],
+        "confirmation": {
+          "kind": "MEAL",
+          "nameVi": "Bữa ăn đã cân đối chứng",
+          "components": [
+            {
+              "observationId": "rice",
+              "foodId": "white-rice",
+              "nameVi": "Cơm trắng",
+              "portion": {
+                "kind": "GRAMS",
+                "grams": 150
+              }
+            },
+            {
+              "observationId": "chicken",
+              "foodId": "chicken-breast",
+              "nameVi": "Ức gà luộc/hấp",
+              "portion": {
+                "kind": "GRAMS",
+                "grams": 120
+              }
+            }
+          ]
+        },
+        "weighedNutrition": {
+          "calories": 393,
+          "proteinGrams": 41.3,
+          "carbsGrams": 42,
+          "fatGrams": 4.8
+        }
+      }
+    },
+    {
+      "caseId": "label-001",
+      "imageType": "NUTRITION_LABEL",
+      "primaryImage": "images/label-001.jpg",
+      "provenance": {
+        "source": "REPLACE_WITH_CAPTURE_SOURCE",
+        "license": "REPLACE_WITH_LICENSE_OR_SIGNED_PERMISSION",
+        "licenseReference": "REPLACE_WITH_PRIVATE_RELEASE_OR_LICENSE_REFERENCE",
+        "collectedAt": "2026-07-22"
+      },
+      "groundTruth": {
+        "clearLabel": true,
+        "confirmation": {
+          "kind": "NUTRITION_LABEL",
+          "nameVi": "Nhãn dinh dưỡng đối chứng",
+          "basis": "PER_SERVING",
+          "facts": {
+            "calories": 180,
+            "proteinGrams": 6,
+            "carbsGrams": 28,
+            "fatGrams": 5
+          },
+          "servingSizeGrams": 50,
+          "consumed": {
+            "kind": "SERVINGS",
+            "amount": 1
+          }
+        },
+        "weighedNutrition": {
+          "calories": 180,
+          "proteinGrams": 6,
+          "carbsGrams": 28,
+          "fatGrams": 5
+        }
+      }
+    }
+  ]
+}
