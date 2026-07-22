@@ -37,10 +37,12 @@ void main() {
           timestamp INTEGER NOT NULL
         )
       ''');
-      await fixture.customStatement(
-        'CREATE INDEX idx_logged_foods_day_time '
-        'ON logged_foods (epoch_day, timestamp)',
-      );
+      if (userVersion >= 2) {
+        await fixture.customStatement(
+          'CREATE INDEX idx_logged_foods_day_time '
+          'ON logged_foods (epoch_day, timestamp)',
+        );
+      }
       await fixture.customStatement(
         '''
         INSERT INTO logged_foods (

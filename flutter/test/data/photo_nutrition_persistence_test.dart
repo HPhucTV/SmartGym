@@ -127,7 +127,8 @@ void main() {
     );
   });
 
-  test('accepts canonical upstream maximum estimate values', () async {
+  test('persists synthetic numeric boundary values without truncation',
+      () async {
     final estimate = NutritionEstimate(
       calories: NutritionRange(min: 50000, mid: 50000, max: 50000),
       proteinGrams: NutritionRange(min: 5000, mid: 5000, max: 5000),
