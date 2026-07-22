@@ -2,7 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { NutritionEstimator } = require('../src/food-analysis/nutrition_estimator');
+const {
+  NutritionEstimator,
+  TOTAL_NUTRIENT_MAXIMA,
+} = require('../src/food-analysis/nutrition_estimator');
 const { FoodDatabase } = require('../src/food-analysis/food_database');
 
 const database = new FoodDatabase([
@@ -177,6 +180,95 @@ test('rejects labels whose calories disagree with macros', () => {
       consumed: { kind: 'GRAMS', amount: 100 },
     }),
     (error) => error.code === 'INVALID_CONFIRMATION',
+  );
+});
+
+test('accepts meal totals at the product safety envelope and rejects totals above it', () => {
+  assert.deepEqual(TOTAL_NUTRIENT_MAXIMA, {
+    calories: 5000,
+    proteinGrams: 500,
+    carbsGrams: 500,
+    fatGrams: 500,
+  });
+  const boundaryEstimator = new NutritionEstimator({
+    database: new FoodDatabase([{
+      id: 'boundary-food',
+      nameVi: 'Mon kiem tra bien',
+      aliases: [],
+      nutrientsPer100g: {
+        calories: 1000,
+        proteinGrams: 100,
+        carbsGrams: 100,
+        fatGrams: 100,
+      },
+      householdPortions: {},
+    }]),
+  });
+  const confirmation = (grams) => ({
+    nameVi: 'Bua an kiem tra bien',
+    components: [{
+      observationId: 'boundary-component',
+      foodId: 'boundary-food',
+      nameVi: 'Mon kiem tra bien',
+      portion: { kind: 'GRAMS', grams },
+    }],
+    uncertaintyReasons: [],
+  });
+
+  const exact = boundaryEstimator.estimateMeal(confirmation(500));
+  for (const nutrient of Object.keys(TOTAL_NUTRIENT_MAXIMA)) {
+    assert.deepEqual(exact.estimate[nutrient], {
+      min: TOTAL_NUTRIENT_MAXIMA[nutrient],
+      mid: TOTAL_NUTRIENT_MAXIMA[nutrient],
+      max: TOTAL_NUTRIENT_MAXIMA[nutrient],
+    });
+  }
+  assert.throws(
+    () => boundaryEstimator.estimateMeal(confirmation(500.0001)),
+    (error) => error.code === 'INVALID_CONFIRMATION'
+      && error.details.field === 'estimate.calories.max',
+  );
+});
+
+test('accepts label totals at the product safety envelope and rejects totals above it', () => {
+  const caloriesProteinCarbs = (amount) => estimator.estimateLabel({
+    nameVi: 'Nhan kiem tra bien',
+    basis: 'PER_100G',
+    facts: {
+      calories: 1000,
+      proteinGrams: 100,
+      carbsGrams: 100,
+      fatGrams: 22.2222222222,
+    },
+    consumed: { kind: 'GRAMS', amount },
+  });
+  const fat = (amount) => estimator.estimateLabel({
+    nameVi: 'Nhan chat beo kiem tra bien',
+    basis: 'PER_100G',
+    facts: {
+      calories: 900,
+      proteinGrams: 0,
+      carbsGrams: 0,
+      fatGrams: 100,
+    },
+    consumed: { kind: 'GRAMS', amount },
+  });
+
+  const exact = caloriesProteinCarbs(500);
+  assert.equal(exact.estimate.calories.max, TOTAL_NUTRIENT_MAXIMA.calories);
+  assert.equal(exact.estimate.proteinGrams.max, TOTAL_NUTRIENT_MAXIMA.proteinGrams);
+  assert.equal(exact.estimate.carbsGrams.max, TOTAL_NUTRIENT_MAXIMA.carbsGrams);
+  assert.equal(fat(500).estimate.fatGrams.max, TOTAL_NUTRIENT_MAXIMA.fatGrams);
+
+  assert.throws(
+    () => caloriesProteinCarbs(500.0001),
+    (error) => error.code === 'INVALID_CONFIRMATION'
+      && error.details.field === 'estimate.calories.max',
+  );
+  assert.throws(
+    () => fat(500.0001),
+    (error) => error.code === 'INVALID_CONFIRMATION'
+      && error.details.field === 'estimate.fatGrams.max',
   );
 });
 

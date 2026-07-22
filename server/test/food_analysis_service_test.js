@@ -2,6 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { AnalysisSessionStore } = require('../src/food-analysis/analysis_session_store');
 const { FoodAnalysisService } = require('../src/food-analysis/food_analysis_service');
+const { FoodDatabase } = require('../src/food-analysis/food_database');
+const { NutritionEstimator } = require('../src/food-analysis/nutrition_estimator');
 const {
   mealConfirmationSchema,
   parseConfirmation,
@@ -218,7 +220,7 @@ test('second image below 0.55 marks low-confidence components manual', async () 
   assert.equal(response.components[0].requiresManualPortion, true);
 });
 
-test('confirmation is rejected until manual low-confidence components are complete', async () => {
+test('a retained manual low-confidence component still requires a portion', async () => {
   const service = makeService({
     observer: sequenceObserver([mealObservation(0.40), mealObservation(0.54)]),
   });
@@ -227,13 +229,58 @@ test('confirmation is rejected until manual low-confidence components are comple
 
   await assert.rejects(
     service.confirm(started.analysisId, validMealConfirmation({ components: [{
-      observationId: 'different-component',
+      observationId: 'component-1',
       foodId: 'white-rice',
       nameVi: 'Cơm trắng',
-      portion: { kind: 'GRAMS', grams: 100 },
+      portion: null,
     }] })),
     (error) => error.code === 'INVALID_CONFIRMATION',
   );
+});
+
+test('a false-positive manual component can be deleted after the second image', async () => {
+  const first = mealObservation(0.4);
+  const second = mealObservation(0.8);
+  second.components.push({
+    id: 'false-positive',
+    nameVi: 'Vật thể nhận nhầm',
+    confidence: 0.4,
+    isMajor: true,
+    suggestedPortion: null,
+  });
+  const events = [];
+  const service = makeService({ observer: sequenceObserver([first, second]) });
+  service.logger = { event: (name, fields) => events.push({ name, fields }) };
+  const started = await service.start(validJpeg());
+  const reviewed = await service.addSecondaryImage(started.analysisId, validJpeg());
+  assert.equal(reviewed.components[1].requiresManualPortion, true);
+
+  const response = await service.confirm(started.analysisId, validMealConfirmation());
+
+  assert.equal(response.status, 'READY');
+  const completed = events.find(
+    (event) => event.name === 'food_analysis_confirmation_completed',
+  );
+  assert.equal(completed.fields.componentCorrectionBucket, 'ONE');
+  assert.equal(completed.fields.portionCorrectionBucket, 'NONE');
+});
+
+test('deleting every meal component remains an invalid confirmation', async () => {
+  const service = makeService({
+    observer: sequenceObserver([mealObservation(0.4), mealObservation(0.4)]),
+  });
+  const started = await service.start(validJpeg());
+  await service.addSecondaryImage(started.analysisId, validJpeg());
+
+  await assert.rejects(
+    service.confirm(started.analysisId, {
+      kind: 'MEAL',
+      nameVi: 'Bữa ăn',
+      components: [],
+    }),
+    (error) => error.code === 'INVALID_CONFIRMATION',
+  );
+  assert.equal(service.sessionStore.get(started.analysisId).status, 'NEEDS_CONFIRMATION');
 });
 
 test('a clear label goes to confirmation while ambiguous required fields request a second image', async () => {
@@ -400,6 +447,74 @@ test('session remains usable after a correctable estimator confirmation error', 
   );
   assert.equal(service.sessionStore.get(started.analysisId).status, 'NEEDS_CONFIRMATION');
   assert.equal((await service.confirm(started.analysisId, validMealConfirmation())).status, 'READY');
+});
+
+test('an over-limit deterministic total is correctable and keeps the session editable', async () => {
+  const database = new FoodDatabase([{
+    id: 'boundary-food',
+    nameVi: 'Cơm trắng',
+    aliases: [],
+    nutrientsPer100g: {
+      calories: 1000,
+      proteinGrams: 100,
+      carbsGrams: 100,
+      fatGrams: 100,
+    },
+    householdPortions: {},
+  }]);
+  const service = makeService({
+    observer: sequenceObserver([mealObservation(0.8, {
+      components: [{
+        id: 'component-1',
+        nameVi: 'Cơm trắng',
+        confidence: 0.8,
+        isMajor: true,
+        suggestedPortion: { kind: 'GRAMS', grams: 500 },
+      }],
+    })]),
+    estimator: new NutritionEstimator({ database }),
+  });
+  const started = await service.start(validJpeg());
+
+  await assert.rejects(
+    service.confirm(started.analysisId, validMealConfirmation({
+      components: [{
+        observationId: 'component-1',
+        foodId: 'boundary-food',
+        nameVi: 'Cơm trắng',
+        portion: { kind: 'GRAMS', grams: 500.0001 },
+      }],
+    })),
+    (error) => error.code === 'INVALID_CONFIRMATION',
+  );
+
+  assert.equal(service.sessionStore.get(started.analysisId).status, 'NEEDS_CONFIRMATION');
+});
+
+test('an over-limit label total is correctable and keeps the session editable', async () => {
+  const service = makeService({
+    observer: sequenceObserver([labelObservation()]),
+    estimator: new NutritionEstimator({ database: new FoodDatabase([]) }),
+  });
+  const started = await service.start(validJpeg());
+
+  await assert.rejects(
+    service.confirm(started.analysisId, {
+      kind: 'NUTRITION_LABEL',
+      nameVi: 'Nhãn kiểm tra biên',
+      basis: 'PER_100G',
+      facts: {
+        calories: 1000,
+        proteinGrams: 100,
+        carbsGrams: 100,
+        fatGrams: 22.2222222222,
+      },
+      consumed: { kind: 'GRAMS', amount: 500.0001 },
+    }),
+    (error) => error.code === 'INVALID_CONFIRMATION',
+  );
+
+  assert.equal(service.sessionStore.get(started.analysisId).status, 'NEEDS_CONFIRMATION');
 });
 
 test('emits bounded workflow telemetry including correction buckets and failures', async () => {

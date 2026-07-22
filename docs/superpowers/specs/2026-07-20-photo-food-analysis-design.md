@@ -269,6 +269,11 @@ Stable error codes include:
 - A label cannot become `READY` while per-100-gram versus per-serving basis remains ambiguous.
 - Hidden oil, sauce, overlapping foods, or weak database matches widen the output range.
 - Results outside configured physiological plausibility bounds are rejected rather than displayed.
+- The product safety envelope for one confirmed photo result is `5,000 kcal`
+  and `500 g` for each macro range value. It is applied after deterministic
+  portion arithmetic and before a result can become `READY` or be persisted.
+  These limits are feature-level rejection guards against amplified but
+  schema-valid inputs; they are not nutrition targets or medical advice.
 - All macro-derived calorie checks are performed deterministically.
 - No result is saved automatically, regardless of confidence.
 

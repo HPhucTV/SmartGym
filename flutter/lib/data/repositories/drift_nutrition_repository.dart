@@ -620,35 +620,43 @@ void _validatePhotoLog(
   _validatePhotoRange(
     log.estimate.calories,
     field: 'log.estimate.calories',
+    maximum: PhotoNutritionSafetyEnvelope.maxCalories,
   );
   _validatePhotoRange(
     log.estimate.proteinGrams,
     field: 'log.estimate.proteinGrams',
+    maximum: PhotoNutritionSafetyEnvelope.maxMacroGrams,
   );
   _validatePhotoRange(
     log.estimate.carbsGrams,
     field: 'log.estimate.carbsGrams',
+    maximum: PhotoNutritionSafetyEnvelope.maxMacroGrams,
   );
   _validatePhotoRange(
     log.estimate.fatGrams,
     field: 'log.estimate.fatGrams',
+    maximum: PhotoNutritionSafetyEnvelope.maxMacroGrams,
   );
 }
 
 void _validatePhotoRange(
   NutritionRange range, {
   required String field,
+  required double maximum,
 }) {
   if (!range.min.isFinite ||
       !range.mid.isFinite ||
       !range.max.isFinite ||
       range.min < 0 ||
       range.min > range.mid ||
-      range.mid > range.max) {
+      range.mid > range.max ||
+      range.min > maximum ||
+      range.mid > maximum ||
+      range.max > maximum) {
     throw ArgumentError.value(
       range,
       field,
-      'Nutrition range must be finite, ordered, and non-negative',
+      'Nutrition range must be finite, ordered, non-negative, and within the product safety envelope',
     );
   }
 }

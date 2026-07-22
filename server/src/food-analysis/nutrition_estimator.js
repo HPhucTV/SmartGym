@@ -6,6 +6,14 @@ const {
 } = require('./contracts');
 
 const NUTRIENTS = ['calories', 'proteinGrams', 'carbsGrams', 'fatGrams'];
+// Product safety envelope for one confirmed photo result. These are rejection
+// limits for obviously implausible calculations, not nutrition advice.
+const TOTAL_NUTRIENT_MAXIMA = Object.freeze({
+  calories: 5000,
+  proteinGrams: 500,
+  carbsGrams: 500,
+  fatGrams: 500,
+});
 const RANGE_MULTIPLIERS = {
   HIDDEN_OIL: { min: 0.85, max: 1.2 },
   SAUCE: { min: 0.9, max: 1.15 },
@@ -54,8 +62,10 @@ class NutritionEstimator {
       }
     }
     this.#widen(total, confirmation.uncertaintyReasons);
+    this.#assertPlausibleTotals(total);
+    const estimate = toEstimate(total);
     return {
-      estimate: toEstimate(total),
+      estimate,
       confidenceLevel: confirmation.uncertaintyReasons.length === 0 ? 'HIGH' : confirmation.uncertaintyReasons.length === 1 ? 'MEDIUM' : 'LOW',
       calculationSummaryVi: `Ước tính từ ${confirmation.components.map((component) => this.#formatConfirmedPortion(component)).join('; ')}.`,
     };
@@ -69,11 +79,13 @@ class NutritionEstimator {
       : confirmation.consumed.kind === 'SERVINGS'
         ? confirmation.consumed.amount
         : confirmation.consumed.amount / confirmation.servingSizeGrams;
-    const estimate = {};
+    const calculated = {};
     for (const nutrient of NUTRIENTS) {
-      const value = rounded(confirmation.facts[nutrient] * multiplier, nutrient);
-      estimate[nutrient] = { min: value, mid: value, max: value };
+      const value = confirmation.facts[nutrient] * multiplier;
+      calculated[nutrient] = { min: value, mid: value, max: value };
     }
+    this.#assertPlausibleTotals(calculated);
+    const estimate = toEstimate(calculated);
     const consumedGrams = confirmation.basis === 'PER_100G'
       ? confirmation.consumed.amount
       : confirmation.consumed.kind === 'GRAMS'
@@ -138,6 +150,22 @@ class NutritionEstimator {
       throw new FoodAnalysisError('INVALID_CONFIRMATION', 'Năng lượng trên nhãn không phù hợp với các chất đa lượng.', 400, { field: 'facts.calories' });
     }
   }
+
+  #assertPlausibleTotals(estimate) {
+    for (const nutrient of NUTRIENTS) {
+      const maximum = TOTAL_NUTRIENT_MAXIMA[nutrient];
+      for (const bound of ['max', 'mid', 'min']) {
+        if (estimate[nutrient][bound] > maximum) {
+          throw new FoodAnalysisError(
+            'INVALID_CONFIRMATION',
+            'Tổng dinh dưỡng vượt giới hạn kiểm tra của tính năng. Vui lòng kiểm tra lại khẩu phần.',
+            400,
+            { field: `estimate.${nutrient}.${bound}` },
+          );
+        }
+      }
+    }
+  }
 }
 
-module.exports = { NutritionEstimator };
+module.exports = { NutritionEstimator, TOTAL_NUTRIENT_MAXIMA };

@@ -127,13 +127,13 @@ void main() {
     );
   });
 
-  test('persists synthetic numeric boundary values without truncation',
+  test('persists totals exactly at the photo product safety envelope',
       () async {
     final estimate = NutritionEstimate(
-      calories: NutritionRange(min: 50000, mid: 50000, max: 50000),
-      proteinGrams: NutritionRange(min: 5000, mid: 5000, max: 5000),
-      carbsGrams: NutritionRange(min: 5000, mid: 5000, max: 5000),
-      fatGrams: NutritionRange(min: 5000, mid: 5000, max: 5000),
+      calories: NutritionRange(min: 5000, mid: 5000, max: 5000),
+      proteinGrams: NutritionRange(min: 500, mid: 500, max: 500),
+      carbsGrams: NutritionRange(min: 500, mid: 500, max: 500),
+      fatGrams: NutritionRange(min: 500, mid: 500, max: 500),
     );
 
     await repository.logPhotoEstimate(
@@ -142,14 +142,62 @@ void main() {
     );
 
     final row = (await repository.loggedFoodsNow(epochDay)).single;
-    expect(row.calories, 50000);
-    expect(row.proteinGrams, 5000);
-    expect(row.carbsGrams, 5000);
-    expect(row.fatGrams, 5000);
-    expect(row.calorieMin, 50000);
-    expect(row.calorieMax, 50000);
-    expect(row.proteinMinGrams, 5000);
-    expect(row.proteinMaxGrams, 5000);
+    expect(row.calories, 5000);
+    expect(row.proteinGrams, 500);
+    expect(row.carbsGrams, 500);
+    expect(row.fatGrams, 500);
+    expect(row.calorieMin, 5000);
+    expect(row.calorieMax, 5000);
+    expect(row.proteinMinGrams, 500);
+    expect(row.proteinMaxGrams, 500);
+  });
+
+  test('rejects totals above the safety envelope before any database write',
+      () async {
+    final atCalorieLimit = NutritionRange(min: 5000, mid: 5000, max: 5000);
+    final atMacroLimit = NutritionRange(min: 500, mid: 500, max: 500);
+    final invalidEstimates = [
+      NutritionEstimate(
+        calories: NutritionRange(min: 5000, mid: 5000, max: 5000.1),
+        proteinGrams: atMacroLimit,
+        carbsGrams: atMacroLimit,
+        fatGrams: atMacroLimit,
+      ),
+      NutritionEstimate(
+        calories: atCalorieLimit,
+        proteinGrams: NutritionRange(min: 500, mid: 500, max: 500.1),
+        carbsGrams: atMacroLimit,
+        fatGrams: atMacroLimit,
+      ),
+      NutritionEstimate(
+        calories: atCalorieLimit,
+        proteinGrams: atMacroLimit,
+        carbsGrams: NutritionRange(min: 500, mid: 500, max: 500.1),
+        fatGrams: atMacroLimit,
+      ),
+      NutritionEstimate(
+        calories: atCalorieLimit,
+        proteinGrams: atMacroLimit,
+        carbsGrams: atMacroLimit,
+        fatGrams: NutritionRange(min: 500, mid: 500, max: 500.1),
+      ),
+    ];
+
+    for (final estimate in invalidEstimates) {
+      await expectLater(
+        repository.logPhotoEstimate(
+          epochDay: epochDay,
+          log: photoLog(estimate: estimate),
+        ),
+        throwsArgumentError,
+      );
+    }
+
+    expect(await repository.loggedFoodsNow(epochDay), isEmpty);
+    expect(
+      await database.personalizationDao.nutritionRangeNow(epochDay, epochDay),
+      isEmpty,
+    );
   });
 
   test('manual logging retains MANUAL source and null analysis metadata',

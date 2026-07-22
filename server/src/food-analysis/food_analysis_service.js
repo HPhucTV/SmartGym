@@ -299,11 +299,13 @@ class FoodAnalysisService {
       .map((component) => component.id);
     if (manualIds.length === 0) return;
     if (!Array.isArray(confirmation.components)) throw invalidConfirmation('components');
-    const confirmedIds = new Set(confirmation.components
-      .filter((component) => component && component.portion)
-      .map((component) => component.observationId));
-    const missing = manualIds.find((id) => !confirmedIds.has(id));
-    if (missing) throw invalidConfirmation('portion', missing);
+    const confirmedById = new Map(confirmation.components
+      .map((component) => [component?.observationId, component]));
+    // Omitting an observed component is an explicit user deletion. A retained
+    // low-confidence component must still have a completed portion.
+    const incomplete = manualIds.find((id) => confirmedById.has(id)
+      && !confirmedById.get(id)?.portion);
+    if (incomplete) throw invalidConfirmation('portion', incomplete);
   }
 }
 

@@ -242,6 +242,22 @@ void main() {
       expect(client.confirmations, hasLength(1));
     });
 
+    test('deleting a false-positive manual component allows confirmation',
+        () async {
+      client.onStart =
+          (_) async => _mealReview(manualPortion: true, duplicateFoodId: true);
+      client.onConfirm = (_, __) async => _ready();
+      await harness.startPrimary(_upload(1));
+
+      harness.notifier.removeMealComponent('component-1');
+      await harness.notifier.confirm();
+
+      expect(harness.state, isA<FoodPhotoReady>());
+      final confirmation = client.confirmations.single as MealConfirmation;
+      expect(confirmation.components, hasLength(1));
+      expect(confirmation.components.single.observationId, 'component-2');
+    });
+
     test('confirmation sends the edited strict payload', () async {
       client.onStart = (_) async => _mealReview();
       client.onConfirm = (_, __) async => _ready();

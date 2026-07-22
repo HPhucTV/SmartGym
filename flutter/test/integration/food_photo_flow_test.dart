@@ -111,6 +111,36 @@ void main() {
     expect(repository.saveCalls, 1);
   });
 
+  testWidgets('false-positive manual component can be deleted then confirmed',
+      (tester) async {
+    final client = _FakeClient()
+      ..startResult = _mealReview(status: 'NEEDS_SECOND_IMAGE')
+      ..secondaryResult = _mealReview(
+        manualPortion: true,
+        includeRetainedComponent: true,
+      )
+      ..confirmResult = _ready();
+    final repository = _FakeRepository();
+    await _pumpFlow(tester,
+        client: client, repository: repository, consent: true);
+
+    await _captureCurrentPhoto(tester, actionKey: 'food-photo-primary-action');
+    await _captureCurrentPhoto(tester,
+        actionKey: 'food-photo-secondary-action');
+    await tester
+        .ensureVisible(find.byKey(const Key('meal-component-remove-rice')));
+    await tester.tap(find.byKey(const Key('meal-component-remove-rice')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const Key('food-analysis-confirm')));
+    await tester.tap(find.byKey(const Key('food-analysis-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('food-analysis-save')), findsOneWidget);
+    final confirmation = client.confirmations.single as MealConfirmation;
+    expect(confirmation.components, hasLength(1));
+    expect(confirmation.components.single.observationId, 'retained');
+  });
+
   testWidgets(
       'clear label accepts consumed correction and saves deterministic result',
       (tester) async {
@@ -498,6 +528,7 @@ class _FlowLauncherState extends State<_FlowLauncher> {
 FoodAnalysisReview _mealReview({
   String status = 'NEEDS_CONFIRMATION',
   bool manualPortion = false,
+  bool includeRetainedComponent = false,
 }) =>
     FoodAnalysisReview.fromJson({
       'analysisId': 'analysis-1',
@@ -519,7 +550,22 @@ FoodAnalysisReview _mealReview({
                   'quantity': 1,
                   'size': 'MEDIUM'
                 },
-        }
+        },
+        if (includeRetainedComponent)
+          {
+            'id': 'retained',
+            'nameVi': 'Cơm trắng',
+            'matchedFoodId': 'white-rice',
+            'confidence': .9,
+            'isMajor': true,
+            'requiresManualPortion': false,
+            'suggestedPortion': {
+              'kind': 'HOUSEHOLD',
+              'unit': 'BOWL',
+              'quantity': 1,
+              'size': 'MEDIUM'
+            },
+          },
       ],
       'labelFacts': null,
       'confidence': .9,

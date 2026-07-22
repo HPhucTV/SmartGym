@@ -409,6 +409,15 @@ final class PreparedUpload {
   Uint8List get bytes => Uint8List.fromList(_bytes);
 }
 
+/// Product safety envelope for one confirmed photo result.
+///
+/// These constants reject obviously implausible calculated totals and are not
+/// nutrition recommendations or medical guidance.
+abstract final class PhotoNutritionSafetyEnvelope {
+  static const double maxCalories = 5000;
+  static const double maxMacroGrams = 500;
+}
+
 final class NutritionRange {
   final double min;
   final double mid;
