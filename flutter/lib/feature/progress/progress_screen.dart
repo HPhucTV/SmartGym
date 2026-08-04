@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../core/model/goal_models.dart';
 import '../../core/model/catalog_models.dart';
 import '../../core/progress/progress_calculator.dart';
 import '../../core/progress/goal_forecast_calculator.dart';

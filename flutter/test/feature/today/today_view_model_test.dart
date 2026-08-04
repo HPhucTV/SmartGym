@@ -98,7 +98,6 @@ void main() {
     when(() => mockCatalogRepo.exercises).thenReturn(exerciseCatalog);
     when(() => mockCatalogRepo.movementBlocks).thenReturn([]);
 
-    final today = currentLocalEpochDay();
     final defaultGoal = ActiveGoal(
       id: 1,
       config: GoalConfig(

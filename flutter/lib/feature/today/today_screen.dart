@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../core/model/goal_models.dart';
 import '../../core/program/program_phase_planner.dart';
 import '../../core/model/catalog_models.dart';
 import '../../ui/theme/colors.dart';
 import '../../ui/theme/theme.dart';
 import '../../ui/theme/spacing.dart';
-import '../../ui/theme/radius.dart';
 import '../../ui/theme/typography.dart';
 import '../../ui/components/gym_card.dart';
 import '../../ui/components/gym_button.dart';
@@ -773,7 +771,6 @@ class AICoachTipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (tip == null || tip!.isEmpty) return const SizedBox.shrink();
     final customColors = context.customColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GymCard(
       variant: GymCardVariant.flat,
@@ -857,7 +854,6 @@ class _AdvisoryMovementBlockCardState extends State<AdvisoryMovementBlockCard> {
   @override
   Widget build(BuildContext context) {
     final customColors = context.customColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GymCard(
       variant: GymCardVariant.flat,

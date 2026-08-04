@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../ui/theme/colors.dart';
 import '../../ui/theme/theme.dart';
 import '../../ui/theme/spacing.dart';
-import '../../ui/theme/radius.dart';
 import '../../ui/theme/typography.dart';
 import '../../ui/components/gym_card.dart';
 import '../../ui/components/gym_button.dart';
@@ -74,9 +73,6 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildContent(BuildContext context, HomeUiState state) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final customColors = context.customColors;
-
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(
@@ -326,7 +322,6 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildQuickActionsGrid(BuildContext context, HomeUiState state) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colors = Theme.of(context).colorScheme;
 
     final items = [
       _QuickActionItem(

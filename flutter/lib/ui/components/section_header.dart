@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../theme/theme.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;
@@ -20,8 +18,6 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final customColors = context.customColors;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(

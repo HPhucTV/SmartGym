@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../theme/theme.dart';
 import 'gym_card.dart';
 
 class StatPill extends StatelessWidget {
@@ -21,8 +20,6 @@ class StatPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final customColors = context.customColors;
-
     return Expanded(
       child: GymCard(
         variant: GymCardVariant.flat,

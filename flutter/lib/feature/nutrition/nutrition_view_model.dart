@@ -69,7 +69,6 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
   StreamSubscription? _catalogSub;
   Timer? _searchDebounce;
 
-  EntrySource _draftEntrySource = EntrySource.manual;
   String? _scannedBarcode;
   SweatPaymentProposal? _draftSweatPayment;
   bool _draftNutrientsRecorded = false;
@@ -323,77 +322,6 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
     );
   }
 
-  Future<void> scanFood(Uint8List? imageBytes) async {
-    if (imageBytes == null) return;
-    final db = ref.read(gymDatabaseProvider);
-    final profile = await db.personalizationDao.profileNow();
-    if (profile == null || !profile.cloudAiConsent) {
-      _updateWith(
-        scanning: false,
-        scanResult: null,
-        scanError: "Hãy bật đồng ý AI Cloud trong Hồ sơ trước khi quét món ăn.",
-      );
-      return;
-    }
-    
-
-    _updateWith(
-      scanning: true,
-      scanError: null,
-      scanResult: null,
-    );
-
-    try {
-      final result = await ref.read(foodAnalysisClientProvider).analyze(imageBytes);
-      if (result != null) {
-        _draftEntrySource = EntrySource.cameraAnalysis;
-        _draftSweatPayment = result.sweatPayment;
-        _draftNutrientsRecorded = false;
-
-        EditableNutritionDraft newDraft;
-        if (result.recommendations.isNotEmpty) {
-          final firstRec = result.recommendations.first;
-          newDraft = EditableNutritionDraft(
-            nameVi: firstRec.dishName,
-            caloriesText: firstRec.calories.toString(),
-            proteinText: firstRec.proteinGrams.toString(),
-            carbsText: firstRec.carbsGrams.toString(),
-            fatText: firstRec.fatGrams.toString(),
-            saveAsTemplate: false,
-            errors: const {},
-          );
-        } else {
-          newDraft = EditableNutritionDraft(
-            nameVi: result.dishName,
-            caloriesText: result.totalCalories.toString(),
-            proteinText: result.proteinGrams.toString(),
-            carbsText: result.carbsGrams.toString(),
-            fatText: result.fatGrams.toString(),
-            fiberText: "0",
-            saveAsTemplate: false,
-            errors: const {},
-          );
-        }
-
-        _updateWith(
-          scanning: false,
-          scanResult: result,
-          draft: newDraft,
-        );
-      } else {
-        _updateWith(
-          scanning: false,
-          scanError: "Không thể phân tích dữ liệu món ăn trả về.",
-        );
-      }
-    } catch (e) {
-      _updateWith(
-        scanning: false,
-        scanError: "Lỗi kết nối tới server backend: $e",
-      );
-    }
-  }
-
   Future<void> scanBarcode(String barcode) async {
     _scannedBarcode = barcode;
     _updateWith(
@@ -404,9 +332,8 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
     );
 
     try {
-      final result = await ref.read(foodAnalysisClientProvider).scanBarcode(barcode);
+      final result = await ref.read(barcodeRepositoryProvider).lookup(barcode);
       if (result != null) {
-        _draftEntrySource = EntrySource.cameraAnalysis;
         _draftSweatPayment = result.sweatPayment;
         _draftNutrientsRecorded = false;
         
@@ -425,7 +352,6 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
           ),
         );
       } else {
-        _draftEntrySource = EntrySource.manual;
         _draftSweatPayment = null;
         _draftNutrientsRecorded = false;
 
@@ -457,7 +383,6 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
 
   void startManualEntry() {
     if (_content.savingDraft) return;
-    _draftEntrySource = EntrySource.manual;
     _draftSweatPayment = null;
     _draftNutrientsRecorded = false;
     _updateWith(
@@ -468,7 +393,6 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
   void selectScanRecommendation(ScanRecommendation recommendation) {
     final result = _content.scanResult;
     if (result == null) return;
-    _draftEntrySource = EntrySource.cameraAnalysis;
     _draftSweatPayment = result.sweatPayment;
     _draftNutrientsRecorded = false;
 
@@ -550,7 +474,10 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
           recommendations: const [],
         );
         try {
-          await ref.read(foodAnalysisClientProvider).registerBarcode(currentBarcode, result);
+          await ref.read(barcodeRepositoryProvider).saveOverride(
+                currentBarcode,
+                result,
+              );
         } catch (_) {}
         _scannedBarcode = null;
       }

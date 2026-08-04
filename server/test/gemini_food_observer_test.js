@@ -104,6 +104,10 @@ test('observes secondary images from fenced JSON using the previous structured o
 });
 
 test('rejects malformed JSON and strict-schema violations without exposing raw output', async () => {
+  const originalConsoleError = console.error;
+  const logs = [];
+  console.error = (...parts) => logs.push(parts.join(' '));
+  try {
   const malformed = new GeminiFoodObserver({
     apiKey: 'test-key',
     model: 'gemini-test',
@@ -128,6 +132,13 @@ test('rejects malformed JSON and strict-schema violations without exposing raw o
     (error) => error.code === 'INVALID_PROVIDER_RESPONSE'
       && error.details === undefined,
   );
+  } finally {
+    console.error = originalConsoleError;
+  }
+  assert.equal(logs.some((line) => line.includes('{not json')), false);
+  assert.equal(logs.some((line) => line.includes('totalCalories')), false);
+  assert.equal(logs.some((line) => line.includes('INVALID_JSON')), true);
+  assert.equal(logs.some((line) => line.includes('SCHEMA_MISMATCH')), true);
 });
 
 test('maps HTTP and network failures to ANALYSIS_UNAVAILABLE', async () => {

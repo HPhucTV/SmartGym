@@ -248,14 +248,21 @@ ${JSON.stringify(parsedPrevious.data)}`,
       let decoded;
       try {
         decoded = JSON.parse(this.#unwrapJson(text));
-      } catch (e) {
-        console.error('Gemini Food Observer JSON parse error:', e, 'Raw text:', text);
+      } catch {
+        console.error(JSON.stringify({
+          event: 'food_observer_provider_response_rejected',
+          code: 'INVALID_JSON',
+        }));
         throw invalidProviderResponse();
       }
       const sanitized = sanitizeObservation(decoded);
       const parsed = providerObservationSchema.safeParse(sanitized);
       if (!parsed.success) {
-        console.error('Gemini Food Observer Zod validation error:', JSON.stringify(parsed.error.issues, null, 2), 'Decoded JSON:', JSON.stringify(decoded, null, 2));
+        console.error(JSON.stringify({
+          event: 'food_observer_provider_response_rejected',
+          code: 'SCHEMA_MISMATCH',
+          issueCount: Math.min(parsed.error.issues.length, 99),
+        }));
         throw invalidProviderResponse();
       }
       return parsed.data;

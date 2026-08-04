@@ -1,23 +1,24 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../theme/spacing.dart';
-import '../theme/radius.dart';
 import '../theme/theme.dart';
 import 'gym_card.dart';
 import 'gym_button.dart';
 
 class Exercise3DDialog extends StatefulWidget {
-  final String exerciseId;
+  final String animationId;
   final String exerciseName;
   final List<String> instructions;
   final VoidCallback onDismiss;
 
   const Exercise3DDialog({
     super.key,
-    required this.exerciseId,
+    required this.animationId,
     required this.exerciseName,
     required this.instructions,
     required this.onDismiss,
@@ -25,7 +26,7 @@ class Exercise3DDialog extends StatefulWidget {
 
   static Future<void> show({
     required BuildContext context,
-    required String exerciseId,
+    required String animationId,
     required String exerciseName,
     required List<String> instructions,
   }) {
@@ -33,11 +34,11 @@ class Exercise3DDialog extends StatefulWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: "Dismiss",
-      barrierColor: Colors.black.withOpacity(0.6),
+      barrierColor: Colors.black.withValues(alpha: 0.6),
       transitionDuration: const Duration(milliseconds: 350),
       pageBuilder: (context, animation, secondaryAnimation) {
         return Exercise3DDialog(
-          exerciseId: exerciseId,
+          animationId: animationId,
           exerciseName: exerciseName,
           instructions: instructions,
           onDismiss: () => Navigator.of(context).pop(),
@@ -45,13 +46,10 @@ class Exercise3DDialog extends StatefulWidget {
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          )),
+          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+              .animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
           child: child,
         );
       },
@@ -69,6 +67,7 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
   bool _isLoading = true;
   bool _hasError = false;
   bool _isHtmlLoaded = false;
+  bool _didStartLoading = false;
 
   @override
   void initState() {
@@ -76,10 +75,30 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
     _initWebView();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didStartLoading) return;
+    _didStartLoading = true;
+    _loadHtmlAsset(isDark: Theme.of(context).brightness == Brightness.dark);
+  }
+
   void _initWebView() {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
+      ..addJavaScriptChannel(
+        'Exercise3D',
+        onMessageReceived: (message) {
+          debugPrint('Exercise 3D error: ${message.message}');
+          if (mounted) {
+            setState(() {
+              _hasError = true;
+              _isLoading = false;
+            });
+          }
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
@@ -101,17 +120,16 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
           },
         ),
       );
-    _loadHtmlAsset();
   }
 
-  Future<void> _loadHtmlAsset() async {
+  Future<void> _loadHtmlAsset({required bool isDark}) async {
     try {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      
       String html = _cachedInlinedHtml ?? "";
       if (html.isEmpty) {
         html = await rootBundle.loadString('assets/3d/model_viewer.html');
-        final js = await rootBundle.loadString('assets/3d/exercise_animations.js');
+        final js = await rootBundle.loadString(
+          'assets/3d/exercise_animations.js',
+        );
 
         // Inline the JS content to avoid relative path errors in WebView across platforms
         html = html.replaceFirst(
@@ -123,8 +141,8 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
 
       // Dynamically inject the theme state (isDarkTheme) on a local copy
       final localHtml = html.replaceFirst(
-        "const isDarkTheme = urlParams.get('theme') === 'dark' || true;",
-        "const isDarkTheme = $isDark;",
+        '__IS_DARK_THEME__',
+        isDark.toString(),
       );
 
       await _webViewController.loadHtmlString(localHtml);
@@ -145,9 +163,11 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
   }
 
   void _injectExerciseId() {
-    final modelName = widget.exerciseId;
+    final animationId = jsonEncode(widget.animationId);
     _webViewController.runJavaScript(
-        "if (window.initExercise) { window.initExercise('$modelName'); } else { console.error('initExercise function not found'); }");
+      "if (window.initExercise) { window.initExercise($animationId); } "
+      "else if (window.Exercise3D) { window.Exercise3D.postMessage('initExercise is unavailable'); }",
+    );
   }
 
   @override
@@ -157,10 +177,11 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
 
     return Dialog(
       backgroundColor: isDark ? AppColors.darkBg : AppColors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20.0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: 20.0,
+        vertical: 40.0,
       ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 40.0),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -181,7 +202,7 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
                             : GymTypography.titleMedium.navy.bold,
                       ),
                       Text(
-                        "MÔ HÌNH 3D TRỰC QUAN 🔄",
+                        "MINH HỌA CHUYỂN ĐỘNG 3D",
                         style: GymTypography.labelSmall.orange.bold,
                       ),
                     ],
@@ -200,7 +221,9 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
             Expanded(
               child: GymCard(
                 variant: GymCardVariant.flat,
-                backgroundColor: isDark ? AppColors.darkSurface : AppColors.surfaceGray,
+                backgroundColor: isDark
+                    ? AppColors.darkSurface
+                    : AppColors.surfaceGray,
                 padding: EdgeInsets.zero,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
@@ -222,6 +245,12 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
                         ),
                 ),
               ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Minh họa hỗ trợ nhận biết chuyển động; hãy ưu tiên hướng dẫn kỹ thuật và dừng tập nếu thấy đau.",
+              style: GymTypography.bodySmall.muted,
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
@@ -272,10 +301,7 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            GymButton.primary(
-              text: "Đã hiểu",
-              onPressed: widget.onDismiss,
-            ),
+            GymButton.primary(text: "Đã hiểu", onPressed: widget.onDismiss),
           ],
         ),
       ),
@@ -289,21 +315,16 @@ class _Exercise3DDialogState extends State<Exercise3DDialog> {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
-            "🏃‍♂️",
-            style: TextStyle(fontSize: 48),
-          ),
+          const Text("🏃‍♂️", style: TextStyle(fontSize: 48)),
           GymGap.md,
           Text(
-            "Mô hình 3D đang được cập nhật",
-            style: GymTypography.titleMedium.bold.copyWith(
-              color: textColor,
-            ),
+            "Chưa có minh họa chuyển động phù hợp",
+            style: GymTypography.titleMedium.bold.copyWith(color: textColor),
             textAlign: TextAlign.center,
           ),
           GymGap.xs,
           Text(
-            "Chúng tôi đang xây dựng mô hình chuyển động chuẩn cho bài tập này. Vui lòng tham khảo hướng dẫn chi tiết bên dưới.",
+            "Vui lòng tham khảo hướng dẫn từng bước bên dưới.",
             style: GymTypography.bodySmall.muted,
             textAlign: TextAlign.center,
           ),

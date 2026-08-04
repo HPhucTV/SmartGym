@@ -10,9 +10,13 @@ import '../../data/local/database.dart';
 import '../../data/providers/data_providers.dart';
 import 'progress_ui_state.dart';
 
+final progressEpochDayProvider = Provider<int>((ref) {
+  return currentLocalEpochDay();
+});
+
 class ProgressSelectedMonthNotifier extends Notifier<YearMonth> {
   @override
-  YearMonth build() => YearMonth.fromDateTime(DateTime.now());
+  YearMonth build() => YearMonth.fromEpochDay(ref.watch(progressEpochDayProvider));
 
   void update(YearMonth Function(YearMonth) cb) => state = cb(state);
 }
@@ -89,7 +93,7 @@ final progressUiStateProvider = Provider<ProgressUiState>((ref) {
   final monthCount = ProgressCalculator.completedSessionsByMonth(allDates)[selectedMonth] ?? 0;
 
   // 1. Calculate Weekly Stats (last 4 weeks)
-  final todayDay = currentLocalEpochDay();
+  final todayDay = ref.watch(progressEpochDayProvider);
   final todayDate = DateTime.fromMillisecondsSinceEpoch(todayDay * 24 * 60 * 60 * 1000, isUtc: true);
   
   // Find Monday of current week

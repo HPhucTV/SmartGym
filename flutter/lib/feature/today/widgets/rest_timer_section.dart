@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../../ui/theme/colors.dart';
 import '../../../ui/theme/theme.dart';
 
 class RestTimerSection extends StatefulWidget {

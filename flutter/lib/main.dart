@@ -6,7 +6,6 @@ import 'core/catalog/asset_catalog_repository.dart';
 import 'core/motivation/motivation_repository.dart';
 import 'data/providers/data_providers.dart';
 import 'ui/theme/theme.dart';
-import 'ui/theme/colors.dart';
 import 'feature/onboarding/onboarding_screen.dart';
 import 'feature/today/today_screen.dart';
 import 'feature/progress/progress_screen.dart';
@@ -38,17 +37,13 @@ Future<void> main({
 
   // Load and initialize Asset Catalog
   print('MAIN: Initializing AssetCatalogRepository...');
-  final catalogRepo = AssetCatalogRepository(
-    assetReader: reader,
-  );
+  final catalogRepo = AssetCatalogRepository(assetReader: reader);
   await catalogRepo.init();
   print('MAIN: AssetCatalogRepository initialized.');
 
   // Load and initialize Motivation quotes
   print('MAIN: Initializing MotivationRepository...');
-  final motivationRepo = MotivationRepository(
-    assetReader: reader,
-  );
+  final motivationRepo = MotivationRepository(assetReader: reader);
   await motivationRepo.init();
   print('MAIN: MotivationRepository initialized.');
 
@@ -95,7 +90,10 @@ class CurrentSubRouteNotifier extends Notifier<String?> {
   set state(String? value) => super.state = value;
 }
 
-final currentSubRouteProvider = NotifierProvider<CurrentSubRouteNotifier, String?>(CurrentSubRouteNotifier.new);
+final currentSubRouteProvider =
+    NotifierProvider<CurrentSubRouteNotifier, String?>(
+      CurrentSubRouteNotifier.new,
+    );
 
 class CurrentShellTabNotifier extends Notifier<int> {
   @override
@@ -104,7 +102,9 @@ class CurrentShellTabNotifier extends Notifier<int> {
   set state(int value) => super.state = value;
 }
 
-final currentShellTabProvider = NotifierProvider<CurrentShellTabNotifier, int>(CurrentShellTabNotifier.new);
+final currentShellTabProvider = NotifierProvider<CurrentShellTabNotifier, int>(
+  CurrentShellTabNotifier.new,
+);
 
 class AppRouterRoot extends ConsumerStatefulWidget {
   const AppRouterRoot({super.key});
@@ -161,7 +161,8 @@ class _AppRouterRootState extends ConsumerState<AppRouterRoot> {
     } else if (subRoute == 'checkin') {
       child = WeeklyCheckInScreen(
         onBack: () => ref.read(currentSubRouteProvider.notifier).state = null,
-        onNavigateToProfile: () => ref.read(currentSubRouteProvider.notifier).state = 'profile',
+        onNavigateToProfile: () =>
+            ref.read(currentSubRouteProvider.notifier).state = 'profile',
       );
     } else if (subRoute == 'recommendations') {
       child = RecommendationScreen(
@@ -255,94 +256,23 @@ class MainNavigationShell extends ConsumerWidget {
           ref.read(currentSubRouteProvider.notifier).state = 'recommendations';
         },
         onGoToOnboardingReplacment: () {
-          ref.read(currentSubRouteProvider.notifier).state = 'onboarding_replace';
+          ref.read(currentSubRouteProvider.notifier).state =
+              'onboarding_replace';
         },
         onGoToOnboardingNew: () {
-          ref.read(currentSubRouteProvider.notifier).state = 'onboarding_replace';
+          ref.read(currentSubRouteProvider.notifier).state =
+              'onboarding_replace';
         },
       ),
     ];
 
     return Scaffold(
-      body: IndexedStack(
-        index: selectedTab,
-        children: screens,
-      ),
+      body: IndexedStack(index: selectedTab, children: screens),
       bottomNavigationBar: GymBottomNav(
         currentIndex: selectedTab,
         onTap: (index) {
           ref.read(currentShellTabProvider.notifier).state = index;
         },
-      ),
-    );
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-  final String description;
-  final VoidCallback onBack;
-
-  const _PlaceholderScreen({
-    required this.title,
-    required this.description,
-    required this.onBack,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final customColors = context.customColors;
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.orange),
-          onPressed: onBack,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(color: customColors.primaryText, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? AppColors.darkBg
-          : AppColors.white,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text("🚧", style: TextStyle(fontSize: 64)),
-              const SizedBox(height: 16),
-              Text(
-                "Tính năng đang phát triển",
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: customColors.primaryText,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                description,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: customColors.mutedText),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: onBack,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text("Quay lại"),
-              )
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../theme/theme.dart';
 
 class GymLinearProgress extends StatelessWidget {
   final double value; // 0.0 to 1.0

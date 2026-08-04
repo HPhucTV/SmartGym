@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../theme/theme.dart';
 
 enum GymButtonType { primary, secondary, text }
 
@@ -83,7 +82,6 @@ class GymButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final customColors = context.customColors;
     final theme = Theme.of(context);
 
     final bool isEnabled = onPressed != null && !isLoading;

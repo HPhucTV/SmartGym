@@ -1,5 +1,7 @@
 # Photo Food Analysis Implementation Plan
 
+> **Historical plan — contract superseded 2026-08-04.** Keep this file as implementation history. The legacy barcode and AI Coach routes described below are no longer runtime contracts; use [`../../online-integrations-and-release-hardening.md`](../../online-integrations-and-release-hardening.md) for the current surface.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace barcode scanning as the primary nutrition action with a consent-gated photo workflow that recognizes meals or nutrition labels, asks for a second photo only when needed, lets the user correct familiar portions, calculates deterministic nutrition ranges, and saves only a confirmed midpoint.

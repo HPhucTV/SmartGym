@@ -5,15 +5,9 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gym_app/core/model/food_photo_analysis_models.dart';
-import 'package:gym_app/core/model/nutrition_models.dart';
-import 'package:gym_app/data/remote/backend_config.dart';
 import 'package:gym_app/data/remote/food_analysis_client.dart';
 
 void main() {
-  tearDown(() {
-    BackendConfig.customServerUrl = null;
-  });
-
   group('canonical enum parsing', () {
     test('parses every canonical enum value', () {
       expect(FoodImageType.fromWire('MEAL'), FoodImageType.meal);
@@ -1107,113 +1101,6 @@ void main() {
       );
     });
 
-    test('legacy analyze preserves URL, parsing, null, and error behavior',
-        () async {
-      late RequestOptions captured;
-      final successClient = _client(_StubAdapter((options, _, __) async {
-        captured = options;
-        return _jsonResponse(_scanResultJson(), 200);
-      }));
-
-      final parsed = await successClient.analyze(Uint8List.fromList([1, 2, 3]));
-      expect(captured.uri.toString(), 'https://backend.test/api/analyze-food');
-      expect((captured.data as FormData).files.single.key, 'image');
-      expect(parsed?.dishName, 'Cơm gà');
-
-      final nullClient = _client(
-        _StubAdapter((_, __, ___) async => _jsonResponse(<Object?>[], 200)),
-      );
-      expect(await nullClient.analyze(Uint8List.fromList([1])), isNull);
-
-      final errorClient = _client(
-        _StubAdapter(
-          (_, __, ___) async =>
-              _jsonResponse({'error': 'Ảnh không hợp lệ.'}, 400),
-        ),
-      );
-      await expectLater(
-        errorClient.analyze(Uint8List.fromList([1])),
-        throwsA(
-          isA<Exception>().having(
-            (error) => error.toString(),
-            'message',
-            contains('Ảnh không hợp lệ.'),
-          ),
-        ),
-      );
-    });
-
-    test('legacy scanBarcode preserves URL, parsing, 404, and HTTP errors',
-        () async {
-      BackendConfig.customServerUrl = 'https://legacy.test';
-      late RequestOptions captured;
-      final successClient = _client(_StubAdapter((options, _, __) async {
-        captured = options;
-        return _jsonResponse(_scanResultJson(), 200);
-      }));
-
-      final parsed = await successClient.scanBarcode('893123');
-      expect(
-        captured.uri.toString(),
-        'https://legacy.test/api/scan-barcode?barcode=893123',
-      );
-      expect(parsed?.totalCalories, 420);
-
-      final notFoundClient = _client(
-        _StubAdapter(
-          (_, __, ___) async =>
-              _jsonResponse({'error': 'product_not_found'}, 404),
-        ),
-      );
-      expect(await notFoundClient.scanBarcode('missing'), isNull);
-
-      final errorClient = _client(
-        _StubAdapter(
-          (_, __, ___) async => _jsonResponse({'error': 'server'}, 500),
-        ),
-      );
-      await expectLater(
-        errorClient.scanBarcode('broken'),
-        throwsA(
-          isA<Exception>().having(
-            (error) => error.toString(),
-            'message',
-            contains('Lỗi HTTP 500'),
-          ),
-        ),
-      );
-    });
-
-    test('legacy registerBarcode preserves body and bool return behavior',
-        () async {
-      BackendConfig.customServerUrl = 'https://legacy.test';
-      late RequestOptions captured;
-      final successClient = _client(_StubAdapter((options, _, __) async {
-        captured = options;
-        return _jsonResponse({'success': true}, 201);
-      }));
-      final result = _scanResult();
-
-      expect(await successClient.registerBarcode('893123', result), isTrue);
-      expect(
-          captured.uri.toString(), 'https://legacy.test/api/register-barcode');
-      expect(captured.data, {
-        'barcode': '893123',
-        'dishName': result.dishName,
-        'totalCalories': result.totalCalories,
-        'proteinGrams': result.proteinGrams,
-        'carbsGrams': result.carbsGrams,
-        'fatGrams': result.fatGrams,
-        'advice': result.advice,
-      });
-
-      final failureClient = _client(
-        _StubAdapter(
-          (_, __, ___) async => _jsonResponse({'error': 'server'}, 500),
-        ),
-      );
-      expect(await failureClient.registerBarcode('893123', result), isFalse);
-    });
   });
 }
 
@@ -1273,26 +1160,6 @@ MealConfirmation _mealConfirmation() => MealConfirmation(
           portion: GramPortion(grams: 150),
         ),
       ],
-    );
-
-Map<String, Object?> _scanResultJson() => {
-      'dishName': 'Cơm gà',
-      'totalCalories': 420,
-      'proteinGrams': 30,
-      'carbsGrams': 50,
-      'fatGrams': 10,
-      'fitnessScore': 7,
-      'advice': 'Ăn đủ rau.',
-      'constituents': <Object?>[],
-      'sweatPayment': null,
-      'calculationProcess': 'Tính từ khẩu phần.',
-      'confidence': 0.8,
-      'needsUserConfirmation': false,
-      'recommendations': <Object?>[],
-    };
-
-ScanResult _scanResult() => ScanResult.fromJson(
-      Map<String, dynamic>.from(_scanResultJson()),
     );
 
 String _text(int length) => List.filled(length, 'x').join();

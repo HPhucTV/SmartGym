@@ -120,10 +120,12 @@ abstract class ExerciseDefinition with _$ExerciseDefinition {
     required List<Equipment> equipment,
     required MovementPattern movementPattern,
     @JsonKey(name: 'primaryMuscle') required MuscleGroup primaryMuscleGroup,
-    @JsonKey(name: 'secondaryMuscles') @Default([]) List<MuscleGroup> secondaryMuscleGroups,
+    @JsonKey(name: 'secondaryMuscles')
+    @Default([])
+    List<MuscleGroup> secondaryMuscleGroups,
     required List<String> instructionsVi,
     @Default([]) List<String> substituteIds,
-    String? gif3dPath,
+    String? animationId,
   }) = _ExerciseDefinition;
 
   factory ExerciseDefinition.fromJson(Map<String, dynamic> json) =>

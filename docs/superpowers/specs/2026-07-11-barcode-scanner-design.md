@@ -1,5 +1,7 @@
 # Tài liệu Thiết kế: Tính năng Quét mã vạch trực tuyến (Online Barcode Scanner)
 
+> **Superseded 2026-08-04.** Thiết kế ghi server/public write đã được thay bằng API tra cứu chỉ-đọc và override Drift cục bộ. Xem [`../../decisions/ADR-002-local-barcode-overrides-and-read-only-api.md`](../../decisions/ADR-002-local-barcode-overrides-and-read-only-api.md).
+
 Tài liệu này đặc tả thiết kế hệ thống quét mã vạch sản phẩm đóng gói để tự động nhận diện và tính toán dinh dưỡng (Calories, Protein, Carbs, Fat) chuẩn xác, thay thế cho chức năng chụp ảnh đĩa ăn cũ.
 
 ---

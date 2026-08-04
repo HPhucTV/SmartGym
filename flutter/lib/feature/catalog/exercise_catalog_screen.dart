@@ -5,7 +5,6 @@ import '../../data/providers/data_providers.dart';
 import '../../ui/theme/colors.dart';
 import '../../ui/theme/theme.dart';
 import '../../ui/components/exercise_3d_dialog.dart';
-import '../../ui/theme/spacing.dart';
 import '../../ui/theme/radius.dart';
 import '../../ui/theme/typography.dart';
 import '../../ui/components/gym_card.dart';
@@ -66,13 +65,11 @@ extension MuscleGroupEmoji on MuscleGroup {
 class ExerciseCatalogScreen extends ConsumerStatefulWidget {
   final VoidCallback onBack;
 
-  const ExerciseCatalogScreen({
-    super.key,
-    required this.onBack,
-  });
+  const ExerciseCatalogScreen({super.key, required this.onBack});
 
   @override
-  ConsumerState<ExerciseCatalogScreen> createState() => _ExerciseCatalogScreenState();
+  ConsumerState<ExerciseCatalogScreen> createState() =>
+      _ExerciseCatalogScreenState();
 }
 
 class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
@@ -105,12 +102,18 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
     final customColors = context.customColors;
 
     final filteredExercises = exercises.where((exercise) {
-      final matchesSearch = exercise.nameVi.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          exercise.instructionsVi.any((ins) => ins.toLowerCase().contains(_searchQuery.toLowerCase()));
-      final matchesMuscle = _selectedMuscle == null ||
+      final matchesSearch =
+          exercise.nameVi.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          exercise.instructionsVi.any(
+            (ins) => ins.toLowerCase().contains(_searchQuery.toLowerCase()),
+          );
+      final matchesMuscle =
+          _selectedMuscle == null ||
           exercise.primaryMuscleGroup == _selectedMuscle ||
           exercise.secondaryMuscleGroups.contains(_selectedMuscle);
-      final matchesEquipment = _selectedEquipment == null || exercise.equipment.contains(_selectedEquipment);
+      final matchesEquipment =
+          _selectedEquipment == null ||
+          exercise.equipment.contains(_selectedEquipment);
       return matchesSearch && matchesMuscle && matchesEquipment;
     }).toList();
 
@@ -146,18 +149,29 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: "Tìm kiếm tên bài tập, hướng dẫn...",
-                  hintStyle: TextStyle(color: customColors.mutedText, fontSize: 14),
+                  hintStyle: TextStyle(
+                    color: customColors.mutedText,
+                    fontSize: 14,
+                  ),
                   prefixIcon: Icon(Icons.search, color: customColors.mutedText),
                   filled: true,
-                  fillColor: isDark ? AppColors.darkSurface : AppColors.surfaceGray,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  fillColor: isDark
+                      ? AppColors.darkSurface
+                      : AppColors.surfaceGray,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 0,
+                    horizontal: 16,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.energyOrange, width: 1.5),
+                    borderSide: const BorderSide(
+                      color: AppColors.energyOrange,
+                      width: 1.5,
+                    ),
                   ),
                 ),
                 style: TextStyle(color: customColors.primaryText, fontSize: 14),
@@ -260,16 +274,24 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
                   ? Center(
                       child: Text(
                         "Không tìm thấy bài tập nào phù hợp 🔍",
-                        style: TextStyle(color: customColors.mutedText, fontSize: 14),
+                        style: TextStyle(
+                          color: customColors.mutedText,
+                          fontSize: 14,
+                        ),
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                       itemCount: filteredExercises.length,
                       itemBuilder: (context, index) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _CatalogExerciseCard(exercise: filteredExercises[index]),
+                          child: _CatalogExerciseCard(
+                            exercise: filteredExercises[index],
+                          ),
                         );
                       },
                     ),
@@ -303,9 +325,7 @@ class _ExerciseCatalogScreenState extends ConsumerState<ExerciseCatalogScreen> {
         onSelected: onSelected,
         selectedColor: AppColors.energyOrange,
         backgroundColor: isDark ? AppColors.darkSurface : AppColors.surfaceGray,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         side: BorderSide.none,
         showCheckmark: false,
       ),
@@ -365,7 +385,9 @@ class _CatalogExerciseCardState extends State<_CatalogExerciseCard> {
                     const SizedBox(height: 2),
                     Text(
                       "${widget.exercise.primaryMuscleGroup.labelVi()} · ${widget.exercise.equipment.map((e) => e.labelVi()).join(', ')}",
-                      style: isDark ? GymTypography.bodySmall.mutedDark : GymTypography.bodySmall.muted,
+                      style: isDark
+                          ? GymTypography.bodySmall.mutedDark
+                          : GymTypography.bodySmall.muted,
                     ),
                   ],
                 ),
@@ -401,13 +423,17 @@ class _CatalogExerciseCardState extends State<_CatalogExerciseCard> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceGray,
+                color: isDark
+                    ? AppColors.darkSurfaceVariant
+                    : AppColors.surfaceGray,
                 borderRadius: GymRadius.mdBorder,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ...widget.exercise.instructionsVi.asMap().entries.map((entry) {
+                  ...widget.exercise.instructionsVi.asMap().entries.map((
+                    entry,
+                  ) {
                     final index = entry.key;
                     final instruction = entry.value;
                     return Padding(
@@ -432,35 +458,37 @@ class _CatalogExerciseCardState extends State<_CatalogExerciseCard> {
                       ),
                     );
                   }),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 44,
-                    child: ElevatedButton(
-                      key: ValueKey("exercise-3d-btn-${widget.exercise.id}"),
-                      onPressed: () {
-                        Exercise3DDialog.show(
-                          context: context,
-                          exerciseId: widget.exercise.id,
-                          exerciseName: widget.exercise.nameVi,
-                          instructions: widget.exercise.instructionsVi,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.energyOrange,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                  if (widget.exercise.animationId != null) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        key: ValueKey("exercise-3d-btn-${widget.exercise.id}"),
+                        onPressed: () {
+                          Exercise3DDialog.show(
+                            context: context,
+                            animationId: widget.exercise.animationId!,
+                            exerciseName: widget.exercise.nameVi,
+                            instructions: widget.exercise.instructionsVi,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.energyOrange,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                          padding: EdgeInsets.zero,
                         ),
-                        elevation: 0,
-                        padding: EdgeInsets.zero,
-                      ),
-                      child: Text(
-                        "Xem 3D trực quan 🔄",
-                        style: GymTypography.titleSmall.white.bold,
+                        child: Text(
+                          "Xem chuyển động 3D",
+                          style: GymTypography.titleSmall.white.bold,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

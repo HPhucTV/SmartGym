@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gym_app/core/model/food_photo_analysis_models.dart';
-import 'package:gym_app/core/model/nutrition_models.dart';
 import 'package:gym_app/data/providers/data_providers.dart';
 import 'package:gym_app/data/providers/remote_providers.dart';
 import 'package:gym_app/data/remote/food_analysis_client.dart';
@@ -1055,17 +1054,6 @@ final class _FakeFoodAnalysisClient implements FoodAnalysisClient {
     cancelCount++;
   }
 
-  @override
-  Future<ScanResult?> analyze(Uint8List imageBytes) =>
-      throw UnsupportedError('legacy API is outside this fake');
-
-  @override
-  Future<bool> registerBarcode(String barcode, ScanResult result) =>
-      throw UnsupportedError('legacy API is outside this fake');
-
-  @override
-  Future<ScanResult?> scanBarcode(String barcode) =>
-      throw UnsupportedError('legacy API is outside this fake');
 }
 
 final class _SavedPhotoLog {

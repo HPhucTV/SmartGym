@@ -46,7 +46,8 @@ class CelebrationNotifier extends Notifier<CelebrationState> {
 // Celebration provider
 final celebrationProvider =
     NotifierProvider<CelebrationNotifier, CelebrationState>(
-        CelebrationNotifier.new);
+      CelebrationNotifier.new,
+    );
 
 class PendingFeedbackNotifier extends Notifier<PendingWorkoutFeedback?> {
   @override
@@ -59,14 +60,15 @@ class PendingFeedbackNotifier extends Notifier<PendingWorkoutFeedback?> {
 // Pending feedback provider
 final pendingFeedbackProvider =
     NotifierProvider<PendingFeedbackNotifier, PendingWorkoutFeedback?>(
-        PendingFeedbackNotifier.new);
+      PendingFeedbackNotifier.new,
+    );
 
 // Cloud AI consent stream provider
 final cloudAiConsentStreamProvider = StreamProvider<bool>((ref) {
   final db = ref.watch(gymDatabaseProvider);
-  return db.personalizationDao
-      .observeProfile()
-      .map((p) => p?.cloudAiConsent == true);
+  return db.personalizationDao.observeProfile().map(
+    (p) => p?.cloudAiConsent == true,
+  );
 });
 
 // Coach coordinator provider
@@ -151,7 +153,8 @@ class TodayNotifier extends Notifier<TodayUiState> {
       }
       if (goal == null) {
         return const TodayUiStateError(
-            "Không tìm thấy mục tiêu đang hoạt động.");
+          "Không tìm thấy mục tiêu đang hoạt động.",
+        );
       }
       if (session == null) {
         return const TodayUiStateGoalComplete();
@@ -180,20 +183,24 @@ class TodayNotifier extends Notifier<TodayUiState> {
         );
       }
 
-      final catalog =
-          ref.read(assetCatalogRepositoryProvider).exercises.associateById();
+      final catalog = ref
+          .read(assetCatalogRepositoryProvider)
+          .exercises
+          .associateById();
 
       final rows = session.exercises.map((exercise) {
         final definition = catalog[exercise.exerciseId];
         if (definition == null) {
           throw StateError(
-              "Không tìm thấy bài tập '${exercise.exerciseId}' trong dữ liệu.");
+            "Không tìm thấy bài tập '${exercise.exerciseId}' trong dữ liệu.",
+          );
         }
 
-        final isSweatMatch = nutrition.sweatActive &&
+        final isSweatMatch =
+            nutrition.sweatActive &&
             nutrition.sweatExerciseId == exercise.exerciseId;
-        final finalPrescriptionText = (isSweatMatch &&
-                nutrition.sweatExtraSets > 0)
+        final finalPrescriptionText =
+            (isSweatMatch && nutrition.sweatExtraSets > 0)
             ? "${exercise.prescription.displayText()} (+${nutrition.sweatExtraSets} hiệp bù calo 🔥)"
             : exercise.prescription.displayText();
 
@@ -208,24 +215,29 @@ class TodayNotifier extends Notifier<TodayUiState> {
           primaryMuscleGroup: definition.primaryMuscleGroup,
           originalExerciseId: exercise.originalExerciseId,
           isLightWorkout: exercise.isLightWorkout,
-          gif3dPath: definition.gif3dPath,
+          animationId: definition.animationId,
         );
       }).toList();
 
       rows.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
       final checked = rows.where((r) => r.isChecked).length;
-      final activePatterns =
-          rows.map((r) => catalog[r.exerciseId]!.movementPattern).toSet();
+      final activePatterns = rows
+          .map((r) => catalog[r.exerciseId]!.movementPattern)
+          .toSet();
 
-      final movementBlocks =
-          ref.read(assetCatalogRepositoryProvider).movementBlocks;
+      final movementBlocks = ref
+          .read(assetCatalogRepositoryProvider)
+          .movementBlocks;
       AdvisoryMovementBlockUi? warmUp;
       AdvisoryMovementBlockUi? coolDown;
 
       if (movementBlocks.isNotEmpty) {
         final selectedWarmUp = MovementBlockPlanner.select(
-            movementBlocks, MovementBlockKind.warmUp, activePatterns);
+          movementBlocks,
+          MovementBlockKind.warmUp,
+          activePatterns,
+        );
         warmUp = AdvisoryMovementBlockUi(
           id: selectedWarmUp.id,
           titleVi: selectedWarmUp.titleVi,
@@ -234,7 +246,10 @@ class TodayNotifier extends Notifier<TodayUiState> {
         );
 
         final selectedCoolDown = MovementBlockPlanner.select(
-            movementBlocks, MovementBlockKind.coolDown, activePatterns);
+          movementBlocks,
+          MovementBlockKind.coolDown,
+          activePatterns,
+        );
         coolDown = AdvisoryMovementBlockUi(
           id: selectedCoolDown.id,
           titleVi: selectedCoolDown.titleVi,
@@ -259,7 +274,8 @@ class TodayNotifier extends Notifier<TodayUiState> {
         rows: rows,
         checkedCount: checked,
         total: rows.length,
-        canComplete: rows.isNotEmpty &&
+        canComplete:
+            rows.isNotEmpty &&
             checked == rows.length &&
             _pendingOrderIndices.isEmpty,
         isCompleting: _completingSessionId == session.id,
@@ -272,7 +288,8 @@ class TodayNotifier extends Notifier<TodayUiState> {
         phase: phase,
         selectedTimeBudgetMinutes: session.selectedTimeBudgetMinutes,
         omittedExerciseCount: session.omittedExerciseCount,
-        canChangeTimeBudget: checked == 0 &&
+        canChangeTimeBudget:
+            checked == 0 &&
             _pendingOrderIndices.isEmpty &&
             _completingSessionId == null,
         warmUp: warmUp,
@@ -304,7 +321,9 @@ class TodayNotifier extends Notifier<TodayUiState> {
     final session = _lastSession;
     if (session == null) return;
     if (_completingSessionId == session.id ||
-        _pendingOrderIndices.contains(orderIndex)) return;
+        _pendingOrderIndices.contains(orderIndex)) {
+      return;
+    }
 
     _pendingOrderIndices.add(orderIndex);
     _interactionError = null;
@@ -348,9 +367,11 @@ class TodayNotifier extends Notifier<TodayUiState> {
       final orig = catalog[originalId];
       if (orig != null) candidates.add(orig);
     }
-    candidates.addAll(substitutionEngine
-        .findSubstitutionCandidates(originalId, profile)
-        .where((e) => e.id != row.exerciseId));
+    candidates.addAll(
+      substitutionEngine
+          .findSubstitutionCandidates(originalId, profile)
+          .where((e) => e.id != row.exerciseId),
+    );
 
     final distinctCandidates = candidates.distinctById().take(3).toList();
 
@@ -395,8 +416,9 @@ class TodayNotifier extends Notifier<TodayUiState> {
     if (currentState is! TodayUiStateWorkout) return;
     final dialog = currentState.substitution;
     if (dialog == null) return;
-    if (dialog.candidates.none((c) => c.exerciseId == replacementExerciseId))
+    if (dialog.candidates.none((c) => c.exerciseId == replacementExerciseId)) {
       return;
+    }
 
     final orderIndex = dialog.orderIndex;
     final sessionId = currentState.sessionId;
@@ -442,12 +464,16 @@ class TodayNotifier extends Notifier<TodayUiState> {
     final currentState = state;
     if (currentState is! TodayUiStateWorkout) return;
     if (!currentState.canChangeTimeBudget ||
-        currentState.selectedTimeBudgetMinutes == minutes) return;
+        currentState.selectedTimeBudgetMinutes == minutes) {
+      return;
+    }
 
     try {
       final repo = ref.read(workoutRepositoryProvider);
-      final result =
-          await repo.applyTimeBudget(currentState.sessionId, minutes);
+      final result = await repo.applyTimeBudget(
+        currentState.sessionId,
+        minutes,
+      );
       if (!ref.mounted) return;
       switch (result) {
         case TimeBudgetResult.applied:
@@ -479,7 +505,9 @@ class TodayNotifier extends Notifier<TodayUiState> {
     if (currentState is! TodayUiStateWorkout) return;
     if (!currentState.canComplete ||
         _completingSessionId != null ||
-        _pendingOrderIndices.isNotEmpty) return;
+        _pendingOrderIndices.isNotEmpty) {
+      return;
+    }
     await _complete(currentState.sessionId);
   }
 
@@ -492,10 +520,12 @@ class TodayNotifier extends Notifier<TodayUiState> {
 
   Future<void> _complete(int sessionId) async {
     final currentState = state;
-    final workoutTitle =
-        currentState is TodayUiStateWorkout ? currentState.titleVi : "";
-    final checkedCount =
-        currentState is TodayUiStateWorkout ? currentState.checkedCount : 0;
+    final workoutTitle = currentState is TodayUiStateWorkout
+        ? currentState.titleVi
+        : "";
+    final checkedCount = currentState is TodayUiStateWorkout
+        ? currentState.checkedCount
+        : 0;
     final total = currentState is TodayUiStateWorkout ? currentState.total : 0;
 
     _completingSessionId = sessionId;
@@ -513,8 +543,9 @@ class TodayNotifier extends Notifier<TodayUiState> {
         case CompleteWorkoutResult.completed:
           final activeGoal = _lastGoal;
           if (activeGoal != null) {
-            ref.read(pendingFeedbackProvider.notifier).state =
-                PendingWorkoutFeedback(
+            ref
+                .read(pendingFeedbackProvider.notifier)
+                .state = PendingWorkoutFeedback(
               sessionId: sessionId,
               goalId: activeGoal.id,
               completedEpochDay: completedEpochDay,
@@ -526,8 +557,9 @@ class TodayNotifier extends Notifier<TodayUiState> {
 
           final completed = await repo.observeCompletedWorkouts().first;
           if (!ref.mounted) return;
-          final activeGoalForAchievements =
-              await repo.observeActiveGoal().first;
+          final activeGoalForAchievements = await repo
+              .observeActiveGoal()
+              .first;
           if (!ref.mounted) return;
           final totalSessions = activeGoalForAchievements?.totalWorkouts ?? 0;
           final targetPerWeek =
@@ -575,12 +607,14 @@ class TodayNotifier extends Notifier<TodayUiState> {
   Future<void> refreshCoachTip() async {
     final goalConfig = _lastGoal?.config;
     final sessionTitle = _lastSession?.titleVi;
-    final completedToday = _lastSession != null &&
+    final completedToday =
+        _lastSession != null &&
         _lastSession!.dueEpochDay > currentLocalEpochDay();
     final nutrition = ref.read(nutritionRepositoryProvider);
 
-    if (_isRefreshingCoach || goalConfig == null || sessionTitle == null)
+    if (_isRefreshingCoach || goalConfig == null || sessionTitle == null) {
       return;
+    }
     _isRefreshingCoach = true;
     state = _resolve();
 

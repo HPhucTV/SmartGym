@@ -5,14 +5,14 @@ const { app } = require('../server');
 
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
 
-test('legacy limiter exhaustion cannot intercept photo-analysis errors or rate limits', async () => {
-  for (let index = 0; index < 100; index += 1) {
-    const response = await request(app).get('/legacy-rate-limit-probe');
-    assert.equal(response.status, 404);
+test('barcode limiter exhaustion cannot intercept photo-analysis errors or rate limits', async () => {
+  for (let index = 0; index < 30; index += 1) {
+    const response = await request(app).get('/api/barcodes/invalid');
+    assert.equal(response.status, 400);
   }
-  const legacyLimited = await request(app).get('/legacy-rate-limit-probe');
-  assert.equal(legacyLimited.status, 429);
-  assert.equal(typeof legacyLimited.body.error, 'string');
+  const barcodeLimited = await request(app).get('/api/barcodes/invalid');
+  assert.equal(barcodeLimited.status, 429);
+  assert.equal(typeof barcodeLimited.body.error, 'string');
 
   const telemetry = [];
   const originalWrite = process.stdout.write;

@@ -143,7 +143,9 @@ class TodayUiStateWorkout extends TodayUiState {
       isRefreshingCoach: isRefreshingCoach ?? this.isRefreshingCoach,
       goalId: goalId ?? this.goalId,
       phase: phase ?? this.phase,
-      substitution: clearSubstitution ? null : (substitution ?? this.substitution),
+      substitution: clearSubstitution
+          ? null
+          : (substitution ?? this.substitution),
       timeBudgetChoices: timeBudgetChoices ?? this.timeBudgetChoices,
       selectedTimeBudgetMinutes:
           selectedTimeBudgetMinutes ?? this.selectedTimeBudgetMinutes,
@@ -208,7 +210,7 @@ class WorkoutRowUi {
   final MuscleGroup primaryMuscleGroup;
   final String? originalExerciseId;
   final bool isLightWorkout;
-  final String? gif3dPath;
+  final String? animationId;
 
   const WorkoutRowUi({
     required this.orderIndex,
@@ -221,7 +223,7 @@ class WorkoutRowUi {
     required this.primaryMuscleGroup,
     this.originalExerciseId,
     this.isLightWorkout = false,
-    this.gif3dPath,
+    this.animationId,
   });
 }
 

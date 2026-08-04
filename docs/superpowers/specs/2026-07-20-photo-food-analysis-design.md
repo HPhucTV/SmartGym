@@ -1,5 +1,7 @@
 # Photo-Based Food Analysis Design
 
+> **Contract update 2026-08-04.** The photo workflow remains accepted, but the temporary legacy endpoints described below have now been removed. See [`../../decisions/ADR-002-local-barcode-overrides-and-read-only-api.md`](../../decisions/ADR-002-local-barcode-overrides-and-read-only-api.md).
+
 ## Status
 
 Accepted by the user on 2026-07-20.

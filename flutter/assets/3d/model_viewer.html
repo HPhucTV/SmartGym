@@ -31,6 +31,7 @@
             width: 100%;
             height: 100%;
             cursor: grab;
+            touch-action: none;
         }
         canvas:active {
             cursor: grabbing;
@@ -43,7 +44,7 @@
             display: flex;
             gap: 6px;
             background: rgba(20, 33, 61, 0.8);
-            padding: 4px 8px;
+            padding: 4px;
             border-radius: 20px;
             border: 1px solid rgba(249, 115, 22, 0.35);
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -55,8 +56,10 @@
             background: transparent;
             border: none;
             color: #FFFFFF;
-            font-size: 11px;
-            padding: 4px 8px;
+            min-height: 48px;
+            min-width: 72px;
+            font-size: 12px;
+            padding: 0 10px;
             cursor: pointer;
             border-radius: 12px;
             display: flex;
@@ -67,6 +70,10 @@
         }
         .btn:hover {
             color: #F97316;
+        }
+        .btn:focus-visible {
+            outline: 2px solid #F97316;
+            outline-offset: 2px;
         }
         .btn-active {
             color: #F97316;
@@ -103,8 +110,14 @@
     <script>
         // System log console queue for early errors
         const errorQueue = [];
+        let reportedError = null;
         function showError(msg) {
+            if (reportedError === msg) return;
+            reportedError = msg;
             console.error("WebViewCanvas Error: " + msg);
+            if (window.Exercise3D && window.Exercise3D.postMessage) {
+                window.Exercise3D.postMessage(msg);
+            }
             const logDiv = document.getElementById('debug-log');
             const logContent = document.getElementById('debug-content');
             if (logDiv && logContent) {
@@ -139,14 +152,14 @@
 </head>
 <body>
     <div id="container">
-        <canvas id="viewCanvas"></canvas>
+        <canvas id="viewCanvas" role="img" tabindex="0" aria-label="Minh họa chuyển động bài tập 3D; kéo để xoay, cuộn hoặc chụm để thu phóng"></canvas>
         
-        <div class="tip">🔄 Kéo để xoay 3D</div>
+        <div class="tip">Kéo để xoay · chụm để thu phóng</div>
         
         <div class="controls">
-            <button class="btn" id="playBtn">⏸ Dừng</button>
-            <button class="btn" id="resetBtn">🔄 Đặt lại</button>
-            <button class="btn" id="speedBtn">⚡ 1.0x</button>
+            <button type="button" class="btn" id="playBtn" aria-label="Dừng hoạt cảnh" aria-pressed="false">⏸ Dừng</button>
+            <button type="button" class="btn" id="resetBtn" aria-label="Đặt lại góc nhìn và hoạt cảnh">↺ Đặt lại</button>
+            <button type="button" class="btn" id="speedBtn" aria-label="Đổi tốc độ hoạt cảnh">⚡ 1.0x</button>
         </div>
         
         <!-- Debug console log inside webview if needed -->
@@ -165,6 +178,8 @@
                 exerciseId = modelId;
                 // Reset time to restart the movement smoothly
                 time = 0;
+                reportedError = null;
+                requestDraw();
             }
         };
 
@@ -184,6 +199,9 @@
         // State setup
         const canvas = document.getElementById('viewCanvas');
         const ctx = canvas.getContext('2d');
+        let viewportWidth = 1;
+        let viewportHeight = 1;
+        let pixelRatio = 1;
         
         // 3D rotation state (angles in radians)
         let yaw = 0.5;    // Left/Right rotation
@@ -191,14 +209,24 @@
         let zoom = 1.0;
         
         // Playback state
-        let isPlaying = true;
+        const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let isPlaying = !prefersReducedMotion;
         let time = 0;
         let speed = 1.0;
         const speeds = [0.5, 1.0, 1.5, 2.0];
         let speedIdx = 1;
+        let frameRequested = false;
+        let lastFrameTimestamp = null;
+        const motionRadiansPerSecond = 3.0;
+        const autoYawRadiansPerSecond = 0.108;
 
         // Colors based on theme (dark detection)
-        const isDarkTheme = urlParams.get('theme') === 'dark' || true; // default dark for contrast
+        const injectedTheme = '__IS_DARK_THEME__';
+        const isDarkTheme = injectedTheme === 'true'
+            ? true
+            : injectedTheme === 'false'
+                ? false
+                : urlParams.get('theme') === 'dark';
         const theme = {
             accent: '#F97316', // EnergyOrange
             grid: isDarkTheme ? 'rgba(255, 255, 255, 0.08)' : 'rgba(20, 33, 61, 0.08)',
@@ -215,11 +243,23 @@
         // Interactive drag listeners
         let isDragging = false;
         let lastX, lastY;
+        let lastTouchDistance = null;
+
+        function clampZoom(value) {
+            return Math.max(0.7, Math.min(1.8, value));
+        }
+
+        function touchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
 
         canvas.addEventListener('mousedown', (e) => {
             isDragging = true;
             lastX = e.clientX;
             lastY = e.clientY;
+            requestDraw();
         });
 
         window.addEventListener('mouseup', () => {
@@ -235,22 +275,59 @@
             pitch = Math.max(-Math.PI/3, Math.min(Math.PI/3, pitch));
             lastX = e.clientX;
             lastY = e.clientY;
+            requestDraw();
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoom = clampZoom(zoom * (e.deltaY > 0 ? 0.92 : 1.08));
+            requestDraw();
+        }, { passive: false });
+
+        canvas.addEventListener('keydown', (e) => {
+            const rotationStep = 0.12;
+            if (e.key === 'ArrowLeft') yaw -= rotationStep;
+            else if (e.key === 'ArrowRight') yaw += rotationStep;
+            else if (e.key === 'ArrowUp') pitch = Math.max(-Math.PI/3, pitch - rotationStep);
+            else if (e.key === 'ArrowDown') pitch = Math.min(Math.PI/3, pitch + rotationStep);
+            else if (e.key === '+' || e.key === '=') zoom = clampZoom(zoom * 1.08);
+            else if (e.key === '-') zoom = clampZoom(zoom * 0.92);
+            else return;
+            e.preventDefault();
+            requestDraw();
         });
 
         // Touch support
         canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
             if (e.touches.length === 1) {
                 isDragging = true;
                 lastX = e.touches[0].clientX;
                 lastY = e.touches[0].clientY;
+                lastTouchDistance = null;
+            } else if (e.touches.length === 2) {
+                isDragging = false;
+                lastTouchDistance = touchDistance(e.touches);
             }
-        });
+            requestDraw();
+        }, { passive: false });
 
         canvas.addEventListener('touchend', () => {
             isDragging = false;
+            lastTouchDistance = null;
         });
 
         canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 2) {
+                const distance = touchDistance(e.touches);
+                if (lastTouchDistance) {
+                    zoom = clampZoom(zoom * distance / lastTouchDistance);
+                }
+                lastTouchDistance = distance;
+                requestDraw();
+                return;
+            }
             if (!isDragging || e.touches.length !== 1) return;
             const dx = e.touches[0].clientX - lastX;
             const dy = e.touches[0].clientY - lastY;
@@ -259,19 +336,32 @@
             pitch = Math.max(-Math.PI/3, Math.min(Math.PI/3, pitch));
             lastX = e.touches[0].clientX;
             lastY = e.touches[0].clientY;
-        });
+            requestDraw();
+        }, { passive: false });
 
         // Controls hooks
         const playBtn = document.getElementById('playBtn');
+        if (!isPlaying) {
+            playBtn.textContent = '▶ Tiếp tục';
+            playBtn.setAttribute('aria-label', 'Tiếp tục hoạt cảnh');
+            playBtn.setAttribute('aria-pressed', 'true');
+        }
         playBtn.addEventListener('click', () => {
             isPlaying = !isPlaying;
             playBtn.textContent = isPlaying ? '⏸ Dừng' : '▶ Tiếp tục';
+            playBtn.setAttribute('aria-label', isPlaying ? 'Dừng hoạt cảnh' : 'Tiếp tục hoạt cảnh');
+            playBtn.setAttribute('aria-pressed', String(!isPlaying));
+            lastFrameTimestamp = null;
+            requestDraw();
         });
 
         document.getElementById('resetBtn').addEventListener('click', () => {
             yaw = 0.5;
             pitch = 0.15;
             zoom = 1.0;
+            time = 0;
+            lastFrameTimestamp = null;
+            requestDraw();
         });
 
         const speedBtn = document.getElementById('speedBtn');
@@ -279,6 +369,7 @@
             speedIdx = (speedIdx + 1) % speeds.length;
             speed = speeds[speedIdx];
             speedBtn.textContent = `⚡ ${speed.toFixed(1)}x`;
+            requestDraw();
         });
 
         // 3D Point projection calculations
@@ -292,15 +383,15 @@
             const yRot = y * Math.cos(pitch) - zRot * Math.sin(pitch);
             const zDepth = y * Math.sin(pitch) + zRot * Math.cos(pitch);
             
-            const w = canvas.width;
-            const h = canvas.height;
-            const baseScale = Math.min(w, h) * 0.45 * zoom;
+            const w = viewportWidth;
+            const h = viewportHeight;
+            const baseScale = Math.min(w, h) * 0.38 * zoom;
             
             const dist = 3.0;
             const pScale = baseScale * (dist / (dist + zDepth));
             
             const screenX = w / 2 + xRot * pScale;
-            const screenY = h * 0.64 - yRot * pScale;
+            const screenY = h * 0.72 - yRot * pScale;
             
             return { x: screenX, y: screenY, z: zDepth, scale: pScale };
         }
@@ -425,27 +516,43 @@
             }
         }
 
-        // Main render loop
-        function drawFrame() {
+        function requestDraw() {
+            if (frameRequested) return;
+            frameRequested = true;
+            requestAnimationFrame(drawFrame);
+        }
+
+        // Main render loop. Motion uses elapsed time so 60/90/120 Hz displays
+        // render the same exercise speed.
+        function drawFrame(timestamp) {
+            frameRequested = false;
             // Dynamic resizing check to handle layout load latency on Android WebView
-            if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight || canvas.width === 0) {
+            if (viewportWidth !== canvas.clientWidth || viewportHeight !== canvas.clientHeight || canvas.width === 0) {
                 resize();
             }
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const elapsedSeconds = lastFrameTimestamp === null
+                ? 0
+                : Math.min((timestamp - lastFrameTimestamp) / 1000, 0.05);
+            lastFrameTimestamp = timestamp;
+
+            if (isPlaying) {
+                time = (time + elapsedSeconds * motionRadiansPerSecond * speed) % (Math.PI * 2);
+                if (!isDragging) {
+                    yaw += elapsedSeconds * autoYawRadiansPerSecond;
+                }
+            }
+
+            ctx.clearRect(0, 0, viewportWidth, viewportHeight);
 
             // Wait for script to load without halting loop
             if (!window.ExerciseAnimations || !window.ExerciseAnimations.getJoints) {
                 ctx.fillStyle = isDarkTheme ? '#E5E7EB' : '#14213D';
                 ctx.font = '14px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('Đang tải hoạt cảnh...', canvas.width / 2, canvas.height / 2);
-                requestAnimationFrame(drawFrame);
+                ctx.fillText('Đang tải hoạt cảnh...', viewportWidth / 2, viewportHeight / 2);
+                requestDraw();
                 return;
-            }
-
-            if (!isDragging && isPlaying) {
-                yaw += 0.0018;
             }
 
             drawGridFloor();
@@ -455,12 +562,10 @@
                 joints = window.ExerciseAnimations.getJoints(exerciseId, time);
                 if (!joints) {
                     showError("Không tìm thấy dữ liệu hoạt cảnh cho bài tập: " + exerciseId);
-                    requestAnimationFrame(drawFrame);
                     return;
                 }
             } catch (e) {
                 showError("Lỗi tính toán joints: " + e.message);
-                requestAnimationFrame(drawFrame);
                 return;
             }
 
@@ -577,25 +682,23 @@
                 }
             });
 
-            if (isPlaying) {
-                time += 0.05 * speed;
-                if (time > Math.PI * 2) {
-                    time -= Math.PI * 2;
-                }
-            }
-
-            requestAnimationFrame(drawFrame);
+            if (isPlaying || isDragging) requestDraw();
         }
 
         function resize() {
-            canvas.width = canvas.clientWidth;
-            canvas.height = canvas.clientHeight;
+            viewportWidth = Math.max(1, canvas.clientWidth);
+            viewportHeight = Math.max(1, canvas.clientHeight);
+            pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = Math.round(viewportWidth * pixelRatio);
+            canvas.height = Math.round(viewportHeight * pixelRatio);
+            ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+            requestDraw();
         }
 
         window.addEventListener('resize', resize);
         resize();
 
-        requestAnimationFrame(drawFrame);
+        requestDraw();
     </script>
 </body>
 </html>

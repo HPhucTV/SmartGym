@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/model/goal_models.dart';
 import '../../../core/model/catalog_models.dart';
 import '../../../ui/components/exercise_3d_dialog.dart';
 import '../today_ui_state.dart';
@@ -64,7 +63,6 @@ class _ExerciseCardState extends State<ExerciseCard> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final customColors = context.customColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -73,7 +71,9 @@ class _ExerciseCardState extends State<ExerciseCard> {
         : (isDark ? AppColors.darkSurface : AppColors.white);
 
     return GymCard(
-      variant: widget.row.isChecked ? GymCardVariant.flat : GymCardVariant.outlined,
+      variant: widget.row.isChecked
+          ? GymCardVariant.flat
+          : GymCardVariant.outlined,
       backgroundColor: bgColor,
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -122,17 +122,21 @@ class _ExerciseCardState extends State<ExerciseCard> {
                           const SizedBox(width: 6),
                           Container(
                             decoration: BoxDecoration(
-                              color: AppColors.energyOrange.withOpacity(0.15),
+                              color: AppColors.energyOrange.withValues(
+                                alpha: 0.15,
+                              ),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             child: Text(
                               "Tập nhẹ",
                               style: GymTypography.labelSmall.orange.bold,
                             ),
-                          )
-                        ]
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -146,12 +150,14 @@ class _ExerciseCardState extends State<ExerciseCard> {
                         Expanded(
                           child: Text(
                             "${widget.row.prescriptionText} · nghỉ ${widget.row.restSeconds}s",
-                            style: isDark ? GymTypography.bodySmall.mutedDark : GymTypography.bodySmall.muted,
+                            style: isDark
+                                ? GymTypography.bodySmall.mutedDark
+                                : GymTypography.bodySmall.muted,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        )
+                        ),
                       ],
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -201,41 +207,19 @@ class _ExerciseCardState extends State<ExerciseCard> {
                       Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceGray,
+                          color: isDark
+                              ? AppColors.darkSurfaceVariant
+                              : AppColors.surfaceGray,
                           borderRadius: GymRadius.mdBorder,
                         ),
                         padding: const EdgeInsets.all(14.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // 2D Image Fallback (loads locally from flutter assets if present)
-                            if (widget.row.gif3dPath != null) ...[
-                              ClipRRect(
-                                borderRadius: GymRadius.smBorder,
-                                child: Image.asset(
-                                  widget.row.gif3dPath!,
-                                  height: 180,
-                                  width: double.infinity,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      height: 60,
-                                      color: isDark ? AppColors.darkSurface : AppColors.borderGray,
-                                      alignment: Alignment.center,
-                                      child: const Text(
-                                        "🏋️",
-                                        style: TextStyle(fontSize: 32),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              GymGap.md,
-                            ],
-
                             // Step-by-Step Instructions
-                            ...List.generate(widget.row.instructionsVi.length,
-                                (index) {
+                            ...List.generate(widget.row.instructionsVi.length, (
+                              index,
+                            ) {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 6.0),
                                 child: Row(
@@ -243,55 +227,58 @@ class _ExerciseCardState extends State<ExerciseCard> {
                                   children: [
                                     Text(
                                       "${index + 1}.",
-                                      style: GymTypography.bodyMedium.orange.bold,
+                                      style:
+                                          GymTypography.bodyMedium.orange.bold,
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         widget.row.instructionsVi[index],
-                                        style: GymTypography.bodyMedium.copyWith(
-                                          color: customColors.primaryText,
-                                          height: 1.4,
-                                        ),
+                                        style: GymTypography.bodyMedium
+                                            .copyWith(
+                                              color: customColors.primaryText,
+                                              height: 1.4,
+                                            ),
                                       ),
-                                    )
+                                    ),
                                   ],
                                 ),
                               );
                             }),
 
-                            GymGap.md,
-                            // Launch 3D Model Dialog Fullscreen
-                            SizedBox(
-                              width: double.infinity,
-                              height: 44,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Exercise3DDialog.show(
-                                    context: context,
-                                    exerciseId: widget.row.exerciseId,
-                                    exerciseName: widget.row.nameVi,
-                                    instructions: widget.row.instructionsVi,
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.energyOrange,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                            if (widget.row.animationId != null) ...[
+                              GymGap.md,
+                              SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    Exercise3DDialog.show(
+                                      context: context,
+                                      animationId: widget.row.animationId!,
+                                      exerciseName: widget.row.nameVi,
+                                      instructions: widget.row.instructionsVi,
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.energyOrange,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    padding: EdgeInsets.zero,
                                   ),
-                                  padding: EdgeInsets.zero,
-                                ),
-                                child: Text(
-                                  "Xem 3D trực quan 🔄",
-                                  style: GymTypography.titleSmall.white.bold,
+                                  child: Text(
+                                    "Xem chuyển động 3D",
+                                    style: GymTypography.titleSmall.white.bold,
+                                  ),
                                 ),
                               ),
-                            )
+                            ],
                           ],
                         ),
-                      )
+                      ),
                     ],
                   )
                 : const SizedBox.shrink(),
@@ -305,8 +292,10 @@ class _ExerciseCardState extends State<ExerciseCard> {
               child: TextButton(
                 onPressed: widget.enabled ? widget.onSubstitute : null,
                 style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -315,8 +304,8 @@ class _ExerciseCardState extends State<ExerciseCard> {
                   style: GymTypography.labelSmall.orange.bold,
                 ),
               ),
-            )
-          ]
+            ),
+          ],
         ],
       ),
     );

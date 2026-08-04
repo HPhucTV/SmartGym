@@ -20,6 +20,7 @@ void main() {
     GymDatabase? fixture;
     try {
       fixture = GymDatabase(NativeDatabase(databaseFile, logStatements: false));
+      await fixture.customStatement('DROP TABLE barcode_overrides');
       await fixture.customStatement('DROP TABLE logged_foods');
       await fixture.customStatement('''
         CREATE TABLE logged_foods (
@@ -66,7 +67,7 @@ void main() {
       database =
           GymDatabase(NativeDatabase(databaseFile, logStatements: false));
 
-      expect(database!.schemaVersion, 3);
+      expect(database!.schemaVersion, 4);
       final row = (await database!.select(database!.loggedFoods).get()).single;
 
       expect(row.name, 'Bữa cũ');
@@ -83,6 +84,23 @@ void main() {
       expect(row.analysisConfidence, isNull);
       expect(row.analysisImageType, isNull);
       expect(row.calculationSummary, isNull);
+
+      await database!.into(database!.barcodeOverrides).insert(
+            BarcodeOverridesCompanion.insert(
+              barcode: '8930000000001',
+              dishName: 'Sản phẩm cục bộ',
+              totalCalories: 120,
+              proteinGrams: 4,
+              carbsGrams: 20,
+              fatGrams: 2,
+              updatedAtEpochMillis: 123456790,
+            ),
+          );
+      expect(
+        await database!.personalizationDao
+            .barcodeOverrideNow('8930000000001'),
+        isNotNull,
+      );
     });
   }
 

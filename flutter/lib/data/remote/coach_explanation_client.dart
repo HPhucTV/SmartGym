@@ -24,7 +24,7 @@ class DioCoachExplanationClient implements CoachExplanationClient {
         )),
         _endpointProvider = endpointProvider ??
             (() => BackendConfig.baseUrl != null
-                ? '${BackendConfig.baseUrl}/api/explain-decision'
+                ? '${BackendConfig.baseUrl}/api/coach/decision-explanations'
                 : null);
 
   @override

@@ -1,0 +1,6 @@
+# Keep the real key.properties file outside Git.
+# storeFile may be an absolute path outside this repository.
+storeFile=C:\\Users\\YOUR_USER\\.android\\smartgym-release.jks
+storePassword=replace_with_local_secret
+keyAlias=replace_with_key_alias
+keyPassword=replace_with_local_secret

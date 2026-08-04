@@ -1,28 +1,113 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-/.idea/
+# Operating-system files
 .DS_Store
-/build
-/app/build/
-/.kotlin/
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+
+# Editors and IDEs
+.idea/
 .vscode/
-server/.env
-server/node_modules/
-server/evaluation/private/
-server/evaluation/results/
-/.worktrees/
-*.jks
-*.xlsx
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+
+# Local agent and worktree state
 .codex/
 .agents/
+/.worktrees/
+
+# Logs, temporary files and test output
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+coverage/
+test-results/
+playwright-report/
+.nyc_output/
+
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+!**/.env.example
+**/local.properties
+**/key.properties
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.pem
+
+# Flutter and Dart
+/flutter/.dart_tool/
+/flutter/.flutter-plugins
+/flutter/.flutter-plugins-dependencies
+/flutter/.pub-cache/
+/flutter/.pub/
+/flutter/.build/
+/flutter/.buildlog/
+/flutter/build/
+/flutter/coverage/
+/flutter/**/doc/api/
+/flutter/**/ios/Flutter/.last_build_id
+/flutter/migrate_working_dir/
+app.*.symbols
+app.*.map.json
+*.apk
+*.aab
+*.ipa
+
+# Android and Gradle
+/.gradle/
+/.kotlin/
+/build/
+/app/build/
+/captures/
+/.externalNativeBuild/
+/.cxx/
+/flutter/android/.gradle/
+/flutter/android/.kotlin/
+/flutter/android/**/build/
+/flutter/android/captures/
+/flutter/android/.externalNativeBuild/
+/flutter/android/.cxx/
+/flutter/android/app/debug/
+/flutter/android/app/profile/
+/flutter/android/app/release/
+
+# iOS and Xcode generated state
+/flutter/ios/Pods/
+/flutter/ios/.symlinks/
+/flutter/ios/Flutter/ephemeral/
+/flutter/ios/Flutter/Generated.xcconfig
+/flutter/ios/Flutter/flutter_export_environment.sh
+/flutter/ios/**/DerivedData/
+/flutter/ios/**/xcuserdata/
+
+# Node.js server
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+/server/evaluation/private/
+/server/evaluation/results/
+
+# Local databases and imported/exported working data
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+/Calorie Tracker.xlsx
+/thuc_pham_mau.xlsx
+/flutter/assets/catalog/thuc_pham_mau.xlsx
+
+# Keep reviewed configuration templates in version control
+!server/.env.example
+!flutter/android/key.properties.example

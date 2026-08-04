@@ -1,5 +1,7 @@
 # Báo cáo Triển khai Task 6, 7, 8, 9 & 10: Bộ quy tắc thích nghi lai & Vòng đời quyết định giao dịch
 
+> **Tài liệu lịch sử.** Endpoint AI Coach hiện hành là `POST /api/coach/decision-explanations`; xem [`online-integrations-and-release-hardening.md`](online-integrations-and-release-hardening.md).
+
 Tài liệu này ghi nhận toàn bộ các thay đổi, cấu trúc mã nguồn, thiết kế UI và kết quả kiểm thử cho toàn bộ tính năng thích nghi thích ứng thuộc kế hoạch nâng cấp Gym App.
 
 ---
@@ -113,6 +115,5 @@ Tất cả các hàm trong `RoomAdaptationRepository` được bao bọc trong `
     *   **Tóm tắt buổi tập**: Đổi tiêu đề thành `"Tóm tắt buổi tập hôm nay"`, đổi đơn vị thời gian thành `"phút"`, và mô tả trạng thái hoàn thành thành dạng `"X/Y bài đã xong"`. Đồng bộ tức thì khi đánh dấu bài tập trong tab Workouts.
     *   **Tiến độ tuần**: Đổi tiêu đề thành `"Tiến độ tuần này"`, đổi các nhãn thứ tự từ Anh ngữ sang tiếng Việt thân thuộc (`"T2", "T3", "T4", "T5", "T6", "T7", "CN"`). Tự động cập nhật ngay khi hoàn tất trọn vẹn một buổi tập.
     *   **Chuỗi liên tục**: Việt hóa huy hiệu chuỗi ngày tập luyện thành `"Chuỗi X ngày"`.
-
 
 

@@ -1,10 +1,53 @@
 // File: exercise_animations.js
-// Dynamic 3D Stick-Figure Joint Calculator for all 65 exercises in Gym App.
+// Dynamic 3D Stick-Figure Joint Calculator for every bundled exercise.
 // Generates joint coordinates (x, y, z) in meters based on time phase t (0 to 2*PI).
 
+const SUPPORTED_ANIMATION_IDS = Object.freeze([
+    'bodyweight_squat', 'goblet_squat', 'barbell_back_squat', 'leg_press',
+    'reverse_lunge', 'walking_lunge', 'split_squat', 'step_up',
+    'bodyweight_good_morning', 'dumbbell_romanian_deadlift',
+    'barbell_romanian_deadlift', 'conventional_deadlift', 'glute_bridge',
+    'single_leg_glute_bridge', 'hip_thrust', 'leg_curl', 'leg_extension',
+    'standing_calf_raise', 'incline_push_up', 'knee_push_up', 'push_up',
+    'dumbbell_bench_press', 'barbell_bench_press', 'incline_dumbbell_press',
+    'machine_chest_press', 'cable_fly', 'dumbbell_overhead_press',
+    'barbell_overhead_press', 'dumbbell_lateral_raise', 'triceps_pushdown',
+    'overhead_triceps_extension', 'prone_y_raise', 'reverse_snow_angel',
+    'superman_hold', 'inverted_row', 'one_arm_dumbbell_row',
+    'barbell_bent_over_row', 'seated_cable_row', 'lat_pulldown',
+    'assisted_pull_up', 'pull_up', 'face_pull', 'reverse_fly',
+    'back_extension', 'dumbbell_biceps_curl', 'hammer_curl', 'plank',
+    'side_plank', 'dead_bug', 'bird_dog', 'mountain_climber',
+    'bicycle_crunch', 'hanging_knee_raise', 'pallof_press', 'brisk_walk',
+    'high_knees', 'jumping_jack', 'low_impact_jumping_jack', 'jump_rope',
+    'stationary_bike', 'treadmill_walk', 'treadmill_run', 'rowing_machine',
+    'elliptical'
+]);
+
+const SUPPORTED = new Set(SUPPORTED_ANIMATION_IDS);
+const SQUAT = new Set(['bodyweight_squat', 'goblet_squat', 'barbell_back_squat', 'leg_press', 'leg_extension']);
+const LUNGE = new Set(['reverse_lunge', 'walking_lunge', 'split_squat', 'step_up']);
+const HINGE = new Set(['bodyweight_good_morning', 'dumbbell_romanian_deadlift', 'barbell_romanian_deadlift', 'conventional_deadlift', 'back_extension']);
+const POSTERIOR = new Set(['glute_bridge', 'single_leg_glute_bridge', 'hip_thrust', 'leg_curl']);
+const PUSH_UP = new Set(['incline_push_up', 'knee_push_up', 'push_up']);
+const CHEST = new Set(['dumbbell_bench_press', 'barbell_bench_press', 'incline_dumbbell_press', 'machine_chest_press', 'cable_fly']);
+const SHOULDERS_TRICEPS = new Set(['dumbbell_overhead_press', 'barbell_overhead_press', 'dumbbell_lateral_raise', 'triceps_pushdown', 'overhead_triceps_extension']);
+const PULL = new Set(['prone_y_raise', 'reverse_snow_angel', 'inverted_row', 'one_arm_dumbbell_row', 'barbell_bent_over_row', 'seated_cable_row', 'lat_pulldown', 'assisted_pull_up', 'pull_up', 'face_pull', 'reverse_fly', 'dumbbell_biceps_curl', 'hammer_curl', 'rowing_machine']);
+const CORE_HOLD = new Set(['plank', 'side_plank', 'superman_hold']);
+const CORE_OPPOSITE = new Set(['dead_bug', 'bird_dog', 'pallof_press']);
+const KNEE_TUCK = new Set(['mountain_climber', 'bicycle_crunch', 'hanging_knee_raise']);
+const CARDIO = new Set(['brisk_walk', 'high_knees', 'jumping_jack', 'low_impact_jumping_jack', 'jump_rope', 'stationary_bike', 'treadmill_walk', 'treadmill_run', 'elliptical']);
+
 window.ExerciseAnimations = {
+    supportedAnimationIds: SUPPORTED_ANIMATION_IDS,
+    isSupported: function(animationId) {
+        return SUPPORTED.has(animationId);
+    },
+
     // Helper to calculate joint coordinates for a specific exercise and phase t
     getJoints: function(exerciseId, t) {
+        if (!SUPPORTED.has(exerciseId)) return null;
+
         // Base standing skeleton template
         const joints = {
             head: [0, 1.65, 0],
@@ -28,7 +71,7 @@ window.ExerciseAnimations = {
         const phase = 0.5 - 0.5 * Math.cos(t);
 
         // Group exercises by movement patterns
-        if (exerciseId.includes("squat") || exerciseId === "leg_press" || exerciseId === "leg_extension") {
+        if (SQUAT.has(exerciseId)) {
             // --- SQUAT PATTERN ---
             const s = phase; // Squat depth (0 to 1)
             
@@ -134,7 +177,7 @@ window.ExerciseAnimations = {
                 }
             }
         } 
-        else if (exerciseId.includes("lunge") || exerciseId === "split_squat" || exerciseId === "step_up") {
+        else if (LUNGE.has(exerciseId)) {
             // --- LUNGE / STEP-UP PATTERN ---
             const s = phase;
             
@@ -168,29 +211,37 @@ window.ExerciseAnimations = {
                 // Arms pump
                 joints.wristL = [-0.25, 0.88 + 0.4 * s, 0.25 * s - 0.1 + 0.2 * s];
                 joints.wristR = [0.25, 0.88 + 0.4 * s, 0.25 * s + 0.1 - 0.2 * s];
-            } else if (exerciseId === "reverse_lunge" || exerciseId === "split_squat" || exerciseId === "walking_lunge") {
-                // Split legs lunge
-                const stepLen = 0.65;
-                // Ankle L is front leg (fixed)
-                joints.ankleL = [-0.15, 0.05, 0.2];
-                // Ankle R is back leg (extends back)
-                joints.ankleR = [0.15, 0.05, 0.2 - stepLen * s];
+            } else {
+                // Lunge variants keep their own stance instead of sharing a squat pose.
+                const isSplit = exerciseId === "split_squat";
+                const isWalking = exerciseId === "walking_lunge";
+                const travel = isWalking ? 0.22 * Math.sin(t) : 0;
+                const rearZ = isSplit ? -0.42 : 0.2 - 0.65 * s;
+                joints.ankleL = [-0.15, 0.05, 0.25 + travel];
+                joints.ankleR = [0.15, 0.05, rearZ + travel];
                 
                 // Hip drops
-                joints.hipL = [-0.15, 0.82 - 0.42 * s, 0];
-                joints.hipR = [0.15, 0.82 - 0.42 * s, 0];
+                joints.hipL = [-0.15, 0.82 - 0.42 * s, travel];
+                joints.hipR = [0.15, 0.82 - 0.42 * s, travel];
                 
                 // Knees bend
-                joints.kneeL = [-0.15, 0.45 - 0.2 * s, 0.25]; // Front knee stays forward
-                joints.kneeR = [0.15, 0.45 - 0.38 * s, 0.1 - 0.3 * s]; // Back knee goes down
+                joints.kneeL = [-0.15, 0.45 - 0.2 * s, 0.28 + travel];
+                joints.kneeR = [0.15, 0.45 - 0.38 * s, rearZ + 0.18 + travel];
                 
-                joints.neck = [0, 1.5 - 0.42 * s, -0.05 * s];
-                joints.head = [0, 1.65 - 0.42 * s, -0.05 * s];
-                joints.shoulderL = [-0.2, 1.42 - 0.42 * s, -0.05 * s];
-                joints.shoulderR = [0.2, 1.42 - 0.42 * s, -0.05 * s];
+                joints.neck = [0, 1.5 - 0.42 * s, travel - 0.05 * s];
+                joints.head = [0, 1.65 - 0.42 * s, travel - 0.05 * s];
+                joints.shoulderL = [-0.2, 1.42 - 0.42 * s, travel - 0.05 * s];
+                joints.shoulderR = [0.2, 1.42 - 0.42 * s, travel - 0.05 * s];
+
+                if (isWalking) {
+                    joints.elbowL = [-0.22, 1.15 - 0.3 * s, travel - 0.18 * Math.sin(t)];
+                    joints.elbowR = [0.22, 1.15 - 0.3 * s, travel + 0.18 * Math.sin(t)];
+                    joints.wristL = [-0.22, 0.9 - 0.2 * s, travel - 0.28 * Math.sin(t)];
+                    joints.wristR = [0.22, 0.9 - 0.2 * s, travel + 0.28 * Math.sin(t)];
+                }
             }
         }
-        else if (exerciseId.includes("deadlift") || exerciseId.includes("good_morning") || exerciseId === "back_extension") {
+        else if (HINGE.has(exerciseId)) {
             // --- HINGE / BENT OVER PATTERN ---
             const s = phase; // hinge amount (0 to 1)
             
@@ -225,19 +276,20 @@ window.ExerciseAnimations = {
                 joints.wristR = [-0.08, 0.8 + 0.62 * Math.cos(angle), 0.62 * Math.sin(angle) + 0.05];
             } else {
                 // Standing Hinge (Deadlift, Good Morning, RDL)
-                const hingeAngle = s * Math.PI / 4.2; // 0 to ~43 deg
+                const isConventional = exerciseId === "conventional_deadlift";
+                const hingeAngle = s * Math.PI / (isConventional ? 3.4 : 4.2);
                 
                 // Ankles fixed
                 joints.ankleL = [-0.15, 0.05, 0];
                 joints.ankleR = [0.15, 0.05, 0];
                 
                 // Knees soften slightly
-                joints.kneeL = [-0.15, 0.45 - 0.02 * s, -0.05 * s];
-                joints.kneeR = [0.15, 0.45 - 0.02 * s, -0.05 * s];
+                joints.kneeL = [-0.15, 0.45 - (isConventional ? 0.18 : 0.02) * s, (isConventional ? 0.13 : -0.05) * s];
+                joints.kneeR = [0.15, 0.45 - (isConventional ? 0.18 : 0.02) * s, (isConventional ? 0.13 : -0.05) * s];
                 
                 // Hips push backward
-                const hipZ = -0.22 * s;
-                const hipY = 0.82 - 0.12 * s;
+                const hipZ = -(isConventional ? 0.14 : 0.22) * s;
+                const hipY = 0.82 - (isConventional ? 0.3 : 0.12) * s;
                 joints.hipL = [-0.15, hipY, hipZ];
                 joints.hipR = [0.15, hipY, hipZ];
                 
@@ -293,7 +345,7 @@ window.ExerciseAnimations = {
                 }
             }
         }
-        else if (exerciseId.includes("glute_bridge") || exerciseId === "hip_thrust" || exerciseId === "leg_curl") {
+        else if (POSTERIOR.has(exerciseId)) {
             // --- LIE ON BACK / BENCH THRUST PATTERN ---
             const s = phase;
             
@@ -403,7 +455,22 @@ window.ExerciseAnimations = {
                 }
             }
         }
-        else if (exerciseId.includes("push_up")) {
+        else if (exerciseId === "standing_calf_raise") {
+            const lift = 0.09 * phase;
+            joints.ankleL = [-0.15, 0.05 + lift, -0.04 * phase];
+            joints.ankleR = [0.15, 0.05 + lift, -0.04 * phase];
+            for (const jointName of ['kneeL', 'kneeR', 'hipL', 'hipR', 'shoulderL', 'shoulderR', 'neck', 'head', 'elbowL', 'elbowR', 'wristL', 'wristR']) {
+                joints[jointName][1] += lift;
+            }
+            joints.props.push({
+                type: 'line',
+                start: [-0.28, 0.03, 0.08],
+                end: [0.28, 0.03, 0.08],
+                color: '#9CA3AF',
+                width: 3
+            });
+        }
+        else if (PUSH_UP.has(exerciseId)) {
             // --- PUSH UP PATTERN ---
             const s = phase;
             const pushDepth = 0.28 * s;
@@ -460,30 +527,47 @@ window.ExerciseAnimations = {
             joints.elbowL = [-0.44 + 0.15 * s, shY + 0.1, pivotZ + 0.6];
             joints.elbowR = [0.44 - 0.15 * s, shY + 0.1, pivotZ + 0.6];
         }
-        else if (exerciseId.includes("bench_press") || exerciseId.includes("chest_press") || exerciseId === "cable_fly") {
+        else if (CHEST.has(exerciseId)) {
             // --- BENCH PRESS / FLY PATTERN ---
             const s = phase;
-            
-            // Back flat on bench
-            joints.neck = [0, 0.45, -0.2];
-            joints.head = [0, 0.45, -0.35];
-            joints.shoulderL = [-0.25, 0.45, -0.2];
-            joints.shoulderR = [0.25, 0.45, -0.2];
-            joints.hipL = [-0.15, 0.45, 0.3];
-            joints.hipR = [0.15, 0.45, 0.3];
-            
-            // Bench rendering
-            joints.props.push({
-                type: 'box',
-                pos: [0, 0.22, 0.05],
-                size: [0.4, 0.45, 0.95]
-            });
-            
-            // Feet on ground
-            joints.ankleL = [-0.3, 0.05, 0.3];
-            joints.ankleR = [0.3, 0.05, 0.3];
-            joints.kneeL = [-0.3, 0.42, 0.3];
-            joints.kneeR = [0.3, 0.42, 0.3];
+            const isIncline = exerciseId === "incline_dumbbell_press";
+            const isMachine = exerciseId === "machine_chest_press";
+
+            if (isMachine) {
+                joints.hipL = [-0.15, 0.58, -0.12];
+                joints.hipR = [0.15, 0.58, -0.12];
+                joints.neck = [0, 1.28, -0.18];
+                joints.head = [0, 1.43, -0.18];
+                joints.shoulderL = [-0.24, 1.2, -0.15];
+                joints.shoulderR = [0.24, 1.2, -0.15];
+                joints.kneeL = [-0.2, 0.55, 0.32];
+                joints.kneeR = [0.2, 0.55, 0.32];
+                joints.ankleL = [-0.2, 0.05, 0.38];
+                joints.ankleR = [0.2, 0.05, 0.38];
+                joints.props.push({ type: 'box', pos: [0, 0.3, -0.12], size: [0.48, 0.55, 0.5] });
+                joints.props.push({ type: 'line', start: [0, 0.55, -0.28], end: [0, 1.32, -0.28], color: '#6B7280', width: 5 });
+            } else {
+                const inclineY = isIncline ? 0.3 : 0;
+                const inclineZ = isIncline ? 0.18 : 0;
+                joints.neck = [0, 0.45 + inclineY, -0.2 - inclineZ];
+                joints.head = [0, 0.45 + inclineY + 0.08, -0.35 - inclineZ];
+                joints.shoulderL = [-0.25, 0.45 + inclineY, -0.2 - inclineZ];
+                joints.shoulderR = [0.25, 0.45 + inclineY, -0.2 - inclineZ];
+                joints.hipL = [-0.15, 0.45, 0.3];
+                joints.hipR = [0.15, 0.45, 0.3];
+                joints.ankleL = [-0.3, 0.05, 0.3];
+                joints.ankleR = [0.3, 0.05, 0.3];
+                joints.kneeL = [-0.3, 0.42, 0.3];
+                joints.kneeR = [0.3, 0.42, 0.3];
+                joints.props.push({
+                    type: 'box',
+                    pos: [0, 0.22, 0.05],
+                    size: [0.4, 0.45, 0.95]
+                });
+                if (isIncline) {
+                    joints.props.push({ type: 'line', start: [0, 0.4, 0.18], end: [0, 0.78, -0.38], color: '#6B7280', width: 6 });
+                }
+            }
             
             if (exerciseId === "cable_fly") {
                 // Arms wide arc khép mở
@@ -493,15 +577,25 @@ window.ExerciseAnimations = {
                 joints.elbowR = [0.25 + r * Math.cos(armAngle), 0.45 + r * Math.sin(armAngle) * 0.3, -0.2 + r * Math.sin(armAngle) * 0.7];
                 joints.wristL = [-0.25 - 0.8 * Math.cos(armAngle), 0.45 + 0.8 * Math.sin(armAngle) * 0.3, -0.2 + 0.8 * Math.sin(armAngle) * 0.7];
                 joints.wristR = [0.25 + 0.8 * Math.cos(armAngle), 0.45 + 0.8 * Math.sin(armAngle) * 0.3, -0.2 + 0.8 * Math.sin(armAngle) * 0.7];
+            } else if (isMachine) {
+                const pressZ = 0.48 * s;
+                joints.wristL = [-0.25, 1.18, 0.08 + pressZ];
+                joints.wristR = [0.25, 1.18, 0.08 + pressZ];
+                joints.elbowL = [-0.38 + 0.12 * s, 1.08, -0.02 + pressZ * 0.55];
+                joints.elbowR = [0.38 - 0.12 * s, 1.08, -0.02 + pressZ * 0.55];
+                joints.props.push({ type: 'line', start: joints.wristL, end: [-0.5, 1.18, -0.15], color: '#9CA3AF', width: 3 });
+                joints.props.push({ type: 'line', start: joints.wristR, end: [0.5, 1.18, -0.15], color: '#9CA3AF', width: 3 });
             } else {
                 // Press pattern - vertical pushing up
                 const pressHeight = 0.38 * s;
-                joints.wristL = [-0.26, 0.48 + pressHeight, -0.2];
-                joints.wristR = [0.26, 0.48 + pressHeight, -0.2];
+                const inclineLift = isIncline ? 0.3 : 0;
+                const inclineReach = isIncline ? 0.18 * s : 0;
+                joints.wristL = [-0.26, 0.48 + inclineLift + pressHeight, -0.2 + inclineReach];
+                joints.wristR = [0.26, 0.48 + inclineLift + pressHeight, -0.2 + inclineReach];
                 
                 // Elbows go down/wide
-                joints.elbowL = [-0.38 + 0.12 * s, 0.38 + pressHeight * 0.4, -0.2];
-                joints.elbowR = [0.38 - 0.12 * s, 0.38 + pressHeight * 0.4, -0.2];
+                joints.elbowL = [-0.38 + 0.12 * s, 0.38 + inclineLift + pressHeight * 0.4, -0.2 + inclineReach * 0.5];
+                joints.elbowR = [0.38 - 0.12 * s, 0.38 + inclineLift + pressHeight * 0.4, -0.2 + inclineReach * 0.5];
                 
                 if (exerciseId.includes("barbell")) {
                     joints.props.push({
@@ -527,7 +621,7 @@ window.ExerciseAnimations = {
                 }
             }
         }
-        else if (exerciseId.includes("overhead_press") || exerciseId.includes("lateral_raise") || exerciseId.includes("triceps")) {
+        else if (SHOULDERS_TRICEPS.has(exerciseId)) {
             // --- VERTICAL PUSH / SHOULDERS / ARMS PATTERN ---
             const s = phase;
             
@@ -633,7 +727,7 @@ window.ExerciseAnimations = {
                 });
             }
         }
-        else if (exerciseId.includes("row") || exerciseId.includes("pull_up") || exerciseId.includes("pulldown") || exerciseId.includes("raise") || exerciseId.includes("snow_angel") || exerciseId.includes("curl") || exerciseId === "face_pull" || exerciseId === "rowing_machine") {
+        else if (PULL.has(exerciseId)) {
             // --- PULL PATTERN ---
             const s = phase;
             
@@ -667,6 +761,19 @@ window.ExerciseAnimations = {
                 joints.kneeR = [0.15, 0.4 + pullY, -0.15 * s];
                 joints.ankleL = [-0.15, 0.05 + pullY, -0.22 * s];
                 joints.ankleR = [0.15, 0.05 + pullY, -0.22 * s];
+                if (exerciseId === "assisted_pull_up") {
+                    joints.kneeL = [-0.15, 0.5 + pullY, 0.16];
+                    joints.kneeR = [0.15, 0.5 + pullY, 0.16];
+                    joints.ankleL = [-0.15, 0.28 + pullY, 0.08];
+                    joints.ankleR = [0.15, 0.28 + pullY, 0.08];
+                    joints.props.push({
+                        type: 'line',
+                        start: [0, 1.9, 0],
+                        end: [0, 0.52 + pullY, 0.16],
+                        color: '#22C55E',
+                        width: 4
+                    });
+                }
             } else if (exerciseId === "lat_pulldown") {
                 // Seated pulling bar down
                 joints.hipL = [-0.15, 0.6, 0];
@@ -815,6 +922,24 @@ window.ExerciseAnimations = {
                         });
                     }
                 }
+            } else if (exerciseId === "reverse_fly") {
+                const armSpread = 0.62 * s;
+                joints.ankleL = [-0.15, 0.05, 0];
+                joints.ankleR = [0.15, 0.05, 0];
+                joints.kneeL = [-0.15, 0.4, 0.04];
+                joints.kneeR = [0.15, 0.4, 0.04];
+                joints.hipL = [-0.15, 0.74, -0.18];
+                joints.hipR = [0.15, 0.74, -0.18];
+                joints.neck = [0, 1.12, 0.28];
+                joints.head = [0, 1.24, 0.39];
+                joints.shoulderL = [-0.2, 1.08, 0.27];
+                joints.shoulderR = [0.2, 1.08, 0.27];
+                joints.elbowL = [-0.24 - armSpread * 0.55, 0.9 + armSpread * 0.25, 0.32];
+                joints.elbowR = [0.24 + armSpread * 0.55, 0.9 + armSpread * 0.25, 0.32];
+                joints.wristL = [-0.28 - armSpread, 0.76 + armSpread * 0.42, 0.34];
+                joints.wristR = [0.28 + armSpread, 0.76 + armSpread * 0.42, 0.34];
+                joints.props.push({ type: 'dumbbell', pos: joints.wristL, rot: [0, 0, 0], size: 0.15 });
+                joints.props.push({ type: 'dumbbell', pos: joints.wristR, rot: [0, 0, 0], size: 0.15 });
             } else if (exerciseId === "face_pull") {
                 // Standing face pull
                 joints.ankleL = [-0.15, 0.05, 0];
@@ -902,7 +1027,7 @@ window.ExerciseAnimations = {
                 }
             }
         }
-        else if (exerciseId === "plank" || exerciseId === "side_plank" || exerciseId === "superman_hold") {
+        else if (CORE_HOLD.has(exerciseId)) {
             // --- CORE HOLDS (Isometric) ---
             // Subtle breathing motion instead of full movement
             const breath = 0.02 * Math.sin(t * 2);
@@ -978,7 +1103,7 @@ window.ExerciseAnimations = {
                 joints.head = [0, shY + 0.04, 0.62];
             }
         }
-        else if (exerciseId === "dead_bug" || exerciseId === "bird_dog" || exerciseId === "pallof_press") {
+        else if (CORE_OPPOSITE.has(exerciseId)) {
             // --- OPPOSITE LIMBS / ANTIROTATION ---
             const s = phase;
             
@@ -1055,7 +1180,7 @@ window.ExerciseAnimations = {
                 joints.ankleR = [0.15, legY, legZ];
             }
         }
-        else if (exerciseId === "mountain_climber" || exerciseId === "bicycle_crunch" || exerciseId === "hanging_knee_raise") {
+        else if (KNEE_TUCK.has(exerciseId)) {
             // --- KNEE TUCK / CRUNCH PATTERN ---
             const s = phase;
             
@@ -1128,47 +1253,98 @@ window.ExerciseAnimations = {
                 joints.ankleR = [0.15, 0.15 * (1 - s) + 0.08 * s, 0.4 * (1 - s) + 0.72 * s];
             }
         }
-        else {
-            // --- CARDIO / LOCOMOTION PATTERN (Default fallback for brisk_walk, running, etc.) ---
-            // If it's another dynamic exercise, apply general walking/cardio movement
-            const walkPhaseL = t;
-            const walkPhaseR = t + Math.PI;
-            
-            const isRun = exerciseId.includes("run") || exerciseId === "jumping_jack" || exerciseId === "high_knees";
-            const isHighKnee = exerciseId === "high_knees";
-            
-            const stride = isRun ? 0.35 : (isHighKnee ? 0.08 : 0.24);
-            const lift = isHighKnee ? 0.36 : (isRun ? 0.22 : 0.08);
-            const torsoTilt = isRun ? 0.12 : (isHighKnee ? 0.02 : 0.04);
-            
-            const bounce = isRun ? (0.04 * Math.max(0, Math.sin(t * 2))) : 0.015 * Math.sin(t * 2);
-            
-            joints.hipL = [-0.15, 0.82 + bounce, 0];
-            joints.hipR = [0.15, 0.82 + bounce, 0];
-            
-            // Knees & Ankles move in walk/run circles
-            const legZ_L = stride * Math.cos(walkPhaseL);
-            const legY_L = 0.05 + lift * Math.max(0, Math.sin(walkPhaseL));
-            joints.ankleL = [-0.15, legY_L, legZ_L];
-            joints.kneeL = [-0.15, 0.44 + bounce + lift * 0.5 * Math.max(0, Math.sin(walkPhaseL + 0.3)), legZ_L * 0.6 + 0.05];
-            
-            const legZ_R = stride * Math.cos(walkPhaseR);
-            const legY_R = 0.05 + lift * Math.max(0, Math.sin(walkPhaseR));
-            joints.ankleR = [0.15, legY_R, legZ_R];
-            joints.kneeR = [0.15, 0.44 + bounce + lift * 0.5 * Math.max(0, Math.sin(walkPhaseR + 0.3)), legZ_R * 0.6 + 0.05];
-            
-            // Torso inclined forward
-            joints.neck = [0, 1.48 + bounce, torsoTilt];
-            joints.head = [0, 1.63 + bounce, torsoTilt + 0.03];
-            joints.shoulderL = [-0.2, 1.4 + bounce, torsoTilt];
-            joints.shoulderR = [0.2, 1.4 + bounce, torsoTilt];
-            
-            // Arms swing opposite to legs
-            const armSwing = isRun ? 0.25 : 0.15;
-            joints.elbowL = [-0.22, 1.1 + bounce, -armSwing * Math.cos(walkPhaseL)];
-            joints.elbowR = [0.22, 1.1 + bounce, -armSwing * Math.cos(walkPhaseR)];
-            joints.wristL = [-0.22, 0.95 + bounce, -armSwing * 1.5 * Math.cos(walkPhaseL) + (isRun ? 0.08 : 0)];
-            joints.wristR = [0.22, 0.95 + bounce, -armSwing * 1.5 * Math.cos(walkPhaseR) + (isRun ? 0.08 : 0)];
+        else if (CARDIO.has(exerciseId)) {
+            const sinT = Math.sin(t);
+            const cosT = Math.cos(t);
+            const bounce = 0.04 * Math.max(0, Math.sin(t * 2));
+
+            if (exerciseId === "jumping_jack") {
+                const spread = 0.22 + 0.34 * phase;
+                const armY = 0.88 + 0.92 * phase;
+                joints.ankleL = [-spread, 0.05 + bounce, 0];
+                joints.ankleR = [spread, 0.05 + bounce, 0];
+                joints.kneeL = [-spread * 0.6, 0.45 + bounce, 0];
+                joints.kneeR = [spread * 0.6, 0.45 + bounce, 0];
+                joints.wristL = [-0.55 + 0.38 * phase, armY + bounce, 0];
+                joints.wristR = [0.55 - 0.38 * phase, armY + bounce, 0];
+                joints.elbowL = [-0.42 + 0.2 * phase, 1.12 + 0.48 * phase + bounce, 0];
+                joints.elbowR = [0.42 - 0.2 * phase, 1.12 + 0.48 * phase + bounce, 0];
+            } else if (exerciseId === "low_impact_jumping_jack") {
+                const sideStep = 0.32 * Math.max(0, sinT);
+                joints.ankleL = [-0.15 - sideStep, 0.05, 0];
+                joints.kneeL = [-0.15 - sideStep * 0.55, 0.45, 0];
+                joints.wristL = [-0.2 - 0.35 * phase, 0.88 + 0.72 * phase, 0];
+                joints.elbowL = [-0.25 - 0.22 * phase, 1.15 + 0.35 * phase, 0];
+                joints.wristR = [0.2, 0.88 + 0.25 * (1 - phase), 0];
+            } else if (exerciseId === "jump_rope") {
+                const jumpHeight = 0.08 * Math.max(0, Math.sin(t * 2));
+                for (const jointName of ['ankleL', 'ankleR', 'kneeL', 'kneeR', 'hipL', 'hipR', 'shoulderL', 'shoulderR', 'neck', 'head']) {
+                    joints[jointName][1] += jumpHeight;
+                }
+                joints.elbowL = [-0.28, 1.12 + jumpHeight, 0];
+                joints.elbowR = [0.28, 1.12 + jumpHeight, 0];
+                joints.wristL = [-0.36, 0.92 + jumpHeight, 0.02];
+                joints.wristR = [0.36, 0.92 + jumpHeight, 0.02];
+                joints.props.push({ type: 'rope', wristL: joints.wristL, wristR: joints.wristR, jumpHeight, phase: t * 2 });
+            } else if (exerciseId === "stationary_bike") {
+                const pedalRadius = 0.22;
+                joints.hipL = [-0.15, 0.78, -0.2];
+                joints.hipR = [0.15, 0.78, -0.2];
+                joints.neck = [0, 1.35, 0.08];
+                joints.head = [0, 1.48, 0.15];
+                joints.shoulderL = [-0.2, 1.28, 0.08];
+                joints.shoulderR = [0.2, 1.28, 0.08];
+                joints.wristL = [-0.28, 1.0, 0.48];
+                joints.wristR = [0.28, 1.0, 0.48];
+                joints.elbowL = [-0.25, 1.12, 0.28];
+                joints.elbowR = [0.25, 1.12, 0.28];
+                joints.ankleL = [-0.15, 0.38 + pedalRadius * sinT, 0.2 + pedalRadius * cosT];
+                joints.ankleR = [0.15, 0.38 - pedalRadius * sinT, 0.2 - pedalRadius * cosT];
+                joints.kneeL = [-0.15, 0.58 + 0.18 * Math.max(0, sinT), 0.08 + 0.18 * cosT];
+                joints.kneeR = [0.15, 0.58 + 0.18 * Math.max(0, -sinT), 0.08 - 0.18 * cosT];
+                joints.props.push({ type: 'line', start: [0, 0.38, 0.2], end: [0, 0.78, -0.2], color: '#6B7280', width: 5 });
+                joints.props.push({ type: 'line', start: [0, 0.38, 0.2], end: [0, 1.02, 0.5], color: '#6B7280', width: 4 });
+            } else if (exerciseId === "elliptical") {
+                const stride = 0.38 * cosT;
+                joints.ankleL = [-0.17, 0.12 + 0.05 * sinT, stride];
+                joints.ankleR = [0.17, 0.12 - 0.05 * sinT, -stride];
+                joints.kneeL = [-0.17, 0.48 + 0.08 * Math.max(0, sinT), stride * 0.55];
+                joints.kneeR = [0.17, 0.48 + 0.08 * Math.max(0, -sinT), -stride * 0.55];
+                joints.elbowL = [-0.23, 1.18, -0.25 * cosT];
+                joints.elbowR = [0.23, 1.18, 0.25 * cosT];
+                joints.wristL = [-0.3, 1.42, -0.42 * cosT];
+                joints.wristR = [0.3, 1.42, 0.42 * cosT];
+                joints.props.push({ type: 'line', start: [-0.3, 0.12, -0.55], end: [-0.3, 1.65, -0.42 * cosT], color: '#6B7280', width: 4 });
+                joints.props.push({ type: 'line', start: [0.3, 0.12, 0.55], end: [0.3, 1.65, 0.42 * cosT], color: '#6B7280', width: 4 });
+            } else {
+                // Brisk walk, treadmill walk/run and high knees share locomotion
+                // mechanics, with exercise-specific stride and lift.
+                const isRun = exerciseId === "treadmill_run";
+                const isHighKnee = exerciseId === "high_knees";
+                const stride = isHighKnee ? 0.08 : (isRun ? 0.35 : 0.24);
+                const lift = isHighKnee ? 0.42 : (isRun ? 0.22 : 0.08);
+                const torsoTilt = isRun ? 0.12 : (isHighKnee ? 0.02 : 0.04);
+                const bodyBounce = isRun || isHighKnee ? bounce : 0.015 * Math.sin(t * 2);
+                joints.hipL = [-0.15, 0.82 + bodyBounce, 0];
+                joints.hipR = [0.15, 0.82 + bodyBounce, 0];
+                const legZL = stride * cosT;
+                const legZR = -legZL;
+                joints.ankleL = [-0.15, 0.05 + lift * Math.max(0, sinT), legZL];
+                joints.ankleR = [0.15, 0.05 + lift * Math.max(0, -sinT), legZR];
+                joints.kneeL = [-0.15, 0.44 + bodyBounce + lift * 0.55 * Math.max(0, Math.sin(t + 0.3)), legZL * 0.6 + 0.05];
+                joints.kneeR = [0.15, 0.44 + bodyBounce + lift * 0.55 * Math.max(0, Math.sin(t + Math.PI + 0.3)), legZR * 0.6 + 0.05];
+                joints.neck = [0, 1.48 + bodyBounce, torsoTilt];
+                joints.head = [0, 1.63 + bodyBounce, torsoTilt + 0.03];
+                joints.shoulderL = [-0.2, 1.4 + bodyBounce, torsoTilt];
+                joints.shoulderR = [0.2, 1.4 + bodyBounce, torsoTilt];
+                const armSwing = isRun ? 0.25 : 0.15;
+                joints.elbowL = [-0.22, 1.1 + bodyBounce, -armSwing * cosT];
+                joints.elbowR = [0.22, 1.1 + bodyBounce, armSwing * cosT];
+                joints.wristL = [-0.22, 0.95 + bodyBounce, -armSwing * 1.5 * cosT + (isRun ? 0.08 : 0)];
+                joints.wristR = [0.22, 0.95 + bodyBounce, armSwing * 1.5 * cosT + (isRun ? 0.08 : 0)];
+            }
+        } else {
+            return null;
         }
 
         return joints;

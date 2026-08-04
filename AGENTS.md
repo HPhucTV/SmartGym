@@ -8,15 +8,18 @@ The expanded release may add a local personal profile and body-weight history, n
 
 ## Current stack
 
-- Kotlin
-- Jetpack Compose with Material 3
-- Single Android application module (`app`)
-- Minimum SDK 24; target SDK 36
-- Room for goals, generated sessions, exercise completion, and history
-- DataStore for small preferences such as reminder time and rest-day behavior
+- Flutter and Dart with Material 3 (`flutter/`)
+- Riverpod for screen-level immutable UI state
+- Drift for goals, generated sessions, exercise completion, and history
+- SharedPreferences for small preferences
 - Bundled JSON assets for exercises and preset programs
+- Local Canvas/WebView stick-figure renderer for 3D movement illustrations
+- Node.js and Express backend for optional online integrations (`server/`)
+- Android minimum SDK 24; target SDK 36
 
 Network permissions and runtime API dependencies are allowed to support online features (such as scanning and retrieving product nutrition details).
+
+Public backend routes must not mutate shared barcode or nutrition catalogs. User-confirmed barcode corrections stay in the local Drift database; remote barcode lookup is read-only. Release builds must fail when external signing configuration is missing, and local health/history data must remain excluded from Android cloud backup and device transfer.
 
 ## Architecture
 
@@ -29,7 +32,7 @@ Use small, feature-oriented units with clear responsibilities:
 - settings and goal replacement
 - local persistence and bundled asset loading
 
-Compose screens consume immutable UI state from screen-level ViewModels. Business rules belong outside Composables. Keep program selection, schedule advancement, streak calculation, and persistence behind focused interfaces so they can be unit tested without Android UI.
+Flutter screens consume immutable UI state from screen-level Riverpod Notifiers. Business rules belong outside Widgets. Keep program selection, schedule advancement, streak calculation, animation lookup, and persistence behind focused interfaces so they can be unit tested without Android UI.
 
 Do not introduce extra modules, dependency injection frameworks, generic base classes, or speculative abstractions unless the existing implementation clearly needs them.
 
@@ -38,6 +41,7 @@ Do not introduce extra modules, dependency injection frameworks, generic base cl
 - Start from the public-domain Free Exercise DB, but import only a reviewed subset of common exercises.
 - Store Vietnamese display names and concise Vietnamese technique instructions.
 - Every catalog exercise must have a stable ID, equipment, difficulty, movement pattern, primary muscle group, and instructions.
+- Each supported 3D illustration must use an explicit `animationId`; never infer a fallback animation from exercise-name substrings.
 - Every exercise reference inside a program session must add sets, repetitions or duration, and rest time.
 - Preset programs are authoritative; never assemble a daily workout randomly.
 - Programs must be indexed by goal, level, available equipment, sessions per week, and duration.
@@ -54,7 +58,7 @@ Do not introduce extra modules, dependency injection frameworks, generic base cl
 - Supporting surfaces: light gray (`#F3F4F6`).
 - Do not use gradients.
 - Use moderate corner radii, thin borders, restrained shadows, strong headings, large progress values, and touch targets suitable for one-handed use.
-- Keep navigation to three primary destinations: Today, Progress, and Settings.
+- Keep navigation to four primary destinations: Today, Progress, Nutrition, and Settings.
 
 ## Behavior and safety
 
@@ -75,14 +79,20 @@ Add tests with each behavior change. At minimum, cover:
 - exercise and session completion rules
 - progress percentage, calendar history, and weekly streaks
 - goal replacement while preserving history
-- the onboarding-to-completion Compose flow
+- the onboarding-to-completion Flutter flow
+- the catalog-to-renderer 3D animation contract
 
 Useful Windows commands:
 
 ```powershell
-.\gradlew.bat test
-.\gradlew.bat assembleDebug
-.\gradlew.bat connectedAndroidTest
+cd flutter
+flutter analyze --no-fatal-infos
+flutter test
+flutter build apk --debug
+
+cd ..\server
+npm test
+npm audit --omit=dev
 ```
 
 Run the smallest relevant tests while iterating, then run the full applicable suite before claiming completion.

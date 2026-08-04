@@ -1,5 +1,7 @@
 # Hướng dẫn & Nhật ký tích hợp Backend & Tính năng Dinh dưỡng (Smart Fuel)
 
+> **Tài liệu lịch sử.** Contract hiện hành từ 2026-08-04 nằm trong [`online-integrations-and-release-hardening.md`](online-integrations-and-release-hardening.md). Không dùng các route cũ bên dưới để phát triển client mới.
+
 Tài liệu này ghi lại chi tiết các thay đổi khi tích hợp backend Node.js (sử dụng Gemini API để nhận diện món ăn từ hình ảnh) và các giao diện dinh dưỡng, cơ chế tập bù calo (**Sweat Payment**), cùng tính năng **Trợ lý AI Coach nhận xét hằng ngày** và các nâng cấp giao diện responsive trên ứng dụng Android.
 
 ---

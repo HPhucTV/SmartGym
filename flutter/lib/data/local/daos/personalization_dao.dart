@@ -7,6 +7,7 @@ import '../tables/meal_templates.dart';
 import '../tables/weekly_check_ins.dart';
 import '../tables/adaptation_decisions.dart';
 import '../tables/user_food_overrides.dart';
+import '../tables/barcode_overrides.dart';
 import '../../../core/model/adaptation_models.dart';
 
 part 'personalization_dao.g.dart';
@@ -19,6 +20,7 @@ part 'personalization_dao.g.dart';
   WeeklyCheckIns,
   AdaptationDecisions,
   UserFoodOverrides,
+  BarcodeOverrides,
 ])
 class PersonalizationDao extends DatabaseAccessor<GymDatabase>
     with _$PersonalizationDaoMixin {
@@ -269,6 +271,17 @@ class PersonalizationDao extends DatabaseAccessor<GymDatabase>
     // COLLATE NOCASE tự động so sánh không phân biệt hoa thường trong SQLite
     final query = select(userFoodOverrides)
       ..where((tbl) => tbl.dishName.equals(dishName))
+      ..limit(1);
+    return query.getSingleOrNull();
+  }
+
+  Future<void> upsertBarcodeOverride(BarcodeOverridesCompanion override) {
+    return into(barcodeOverrides).insertOnConflictUpdate(override);
+  }
+
+  Future<BarcodeOverrideData?> barcodeOverrideNow(String barcode) {
+    final query = select(barcodeOverrides)
+      ..where((table) => table.barcode.equals(barcode))
       ..limit(1);
     return query.getSingleOrNull();
   }

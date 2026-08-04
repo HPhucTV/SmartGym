@@ -16,6 +16,7 @@ import 'tables/achievements.dart';
 import 'tables/workout_feedback.dart';
 import 'tables/meal_templates.dart';
 import 'tables/user_food_overrides.dart';
+import 'tables/barcode_overrides.dart';
 import 'tables/food_catalog.dart';
 import 'tables/logged_foods.dart';
 import 'converters.dart';
@@ -56,6 +57,7 @@ LazyDatabase _openConnection() {
     WorkoutFeedbacks,
     MealTemplates,
     UserFoodOverrides,
+    BarcodeOverrides,
     FoodCatalog,
     LoggedFoods,
   ],
@@ -72,7 +74,7 @@ class GymDatabase extends _$GymDatabase {
   GymDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -98,6 +100,9 @@ class GymDatabase extends _$GymDatabase {
             await m.addColumn(loggedFoods, loggedFoods.analysisConfidence);
             await m.addColumn(loggedFoods, loggedFoods.analysisImageType);
             await m.addColumn(loggedFoods, loggedFoods.calculationSummary);
+          }
+          if (from < 4) {
+            await m.createTable(barcodeOverrides);
           }
         },
       );

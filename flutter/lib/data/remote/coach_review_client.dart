@@ -48,7 +48,7 @@ class DioCoachReviewClient implements CoachReviewClient {
         )),
         _endpointProvider = endpointProvider ??
             (() => BackendConfig.baseUrl != null
-                ? '${BackendConfig.baseUrl}/api/coach-review'
+                ? '${BackendConfig.baseUrl}/api/coach/review'
                 : null);
 
   @override

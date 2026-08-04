@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
-import '../theme/theme.dart';
 
 class GymAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -18,8 +17,6 @@ class GymAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final customColors = context.customColors;
-
     return AppBar(
       title: Text(
         title,

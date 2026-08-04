@@ -1,7 +1,4 @@
 class SchedulePlanner {
-  static const int _maxInt = 9223372036854775807;
-  static const int _minInt = -9223372036854775808;
-
   static int _safeAdd(int a, int b) {
     final res = a + b;
     if ((a > 0 && b > 0 && res < 0) || (a < 0 && b < 0 && res > 0)) {

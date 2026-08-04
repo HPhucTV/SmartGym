@@ -15,6 +15,8 @@ mixin _$PersonalizationDaoMixin on DatabaseAccessor<GymDatabase> {
       attachedDatabase.adaptationDecisions;
   $UserFoodOverridesTable get userFoodOverrides =>
       attachedDatabase.userFoodOverrides;
+  $BarcodeOverridesTable get barcodeOverrides =>
+      attachedDatabase.barcodeOverrides;
   PersonalizationDaoManager get managers => PersonalizationDaoManager(this);
 }
 
@@ -23,22 +25,39 @@ class PersonalizationDaoManager {
   PersonalizationDaoManager(this._db);
   $$PersonalProfilesTableTableManager get personalProfiles =>
       $$PersonalProfilesTableTableManager(
-          _db.attachedDatabase, _db.personalProfiles);
+        _db.attachedDatabase,
+        _db.personalProfiles,
+      );
   $$WeightMeasurementsTableTableManager get weightMeasurements =>
       $$WeightMeasurementsTableTableManager(
-          _db.attachedDatabase, _db.weightMeasurements);
+        _db.attachedDatabase,
+        _db.weightMeasurements,
+      );
   $$DailyNutritionsTableTableManager get dailyNutritions =>
       $$DailyNutritionsTableTableManager(
-          _db.attachedDatabase, _db.dailyNutritions);
+        _db.attachedDatabase,
+        _db.dailyNutritions,
+      );
   $$MealTemplatesTableTableManager get mealTemplates =>
       $$MealTemplatesTableTableManager(_db.attachedDatabase, _db.mealTemplates);
   $$WeeklyCheckInsTableTableManager get weeklyCheckIns =>
       $$WeeklyCheckInsTableTableManager(
-          _db.attachedDatabase, _db.weeklyCheckIns);
+        _db.attachedDatabase,
+        _db.weeklyCheckIns,
+      );
   $$AdaptationDecisionsTableTableManager get adaptationDecisions =>
       $$AdaptationDecisionsTableTableManager(
-          _db.attachedDatabase, _db.adaptationDecisions);
+        _db.attachedDatabase,
+        _db.adaptationDecisions,
+      );
   $$UserFoodOverridesTableTableManager get userFoodOverrides =>
       $$UserFoodOverridesTableTableManager(
-          _db.attachedDatabase, _db.userFoodOverrides);
+        _db.attachedDatabase,
+        _db.userFoodOverrides,
+      );
+  $$BarcodeOverridesTableTableManager get barcodeOverrides =>
+      $$BarcodeOverridesTableTableManager(
+        _db.attachedDatabase,
+        _db.barcodeOverrides,
+      );
 }

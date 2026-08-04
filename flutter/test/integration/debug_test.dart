@@ -10,7 +10,7 @@ void main() {
     print('1. Setting mock shared preferences...');
     SharedPreferences.setMockInitialValues({});
     print('2. Getting shared preferences...');
-    final prefs = await SharedPreferences.getInstance();
+    await SharedPreferences.getInstance();
     print('3. Initializing asset catalog...');
     final catalogRepo = AssetCatalogRepository(
       assetReader: (path) => rootBundle.loadString(path),
