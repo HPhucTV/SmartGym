@@ -5,6 +5,7 @@ import '../local/database.dart' as db;
 import '../local/daos/workout_dao.dart';
 import 'workout_repository.dart';
 import 'settings_repository.dart';
+import '../../../core/model/achievement_models.dart';
 import '../../../core/model/goal_models.dart';
 import '../../../core/model/workout_models.dart';
 import '../../../core/model/catalog_models.dart';
@@ -507,6 +508,31 @@ class DriftWorkoutRepository implements WorkoutRepository {
   Future<void> archiveActiveGoal() async {
     await database.transaction(() async {
       await dao.archiveActiveGoals();
+    });
+  }
+
+  @override
+  Future<Set<AchievementType>> unlockedAchievements() async {
+    final rows = await database.achievementDao.getAll();
+    final storedNames = rows.map((row) => row.type).toSet();
+    return AchievementType.values
+        .where((type) => storedNames.contains(type.name))
+        .toSet();
+  }
+
+  @override
+  Future<void> recordUnlockedAchievements(
+      Set<AchievementType> types, int unlockedAtEpochMillis) async {
+    if (types.isEmpty) return;
+    await database.transaction(() async {
+      for (final type in types) {
+        await database.achievementDao.insert(
+          db.AchievementsCompanion.insert(
+            type: type.name,
+            unlockedAtEpochMillis: unlockedAtEpochMillis,
+          ),
+        );
+      }
     });
   }
 

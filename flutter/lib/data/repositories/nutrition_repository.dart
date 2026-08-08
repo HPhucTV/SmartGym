@@ -64,6 +64,31 @@ final class PhotoNutritionLog {
   });
 }
 
+/// Một món cần ghi vào nhật ký ăn, dùng cho [NutritionRepository.logFoods].
+final class FoodLogEntry {
+  final String name;
+  final String mealTime;
+  final double grams;
+  final int calories;
+  final int proteinGrams;
+  final int carbsGrams;
+  final int fatGrams;
+  final int fiberGrams;
+  final int? foodCatalogId;
+
+  const FoodLogEntry({
+    required this.name,
+    required this.mealTime,
+    required this.grams,
+    required this.calories,
+    required this.proteinGrams,
+    required this.carbsGrams,
+    required this.fatGrams,
+    required this.fiberGrams,
+    this.foodCatalogId,
+  });
+}
+
 abstract class NutritionRepository {
   Stream<NutritionData> get nutritionData;
   Stream<NutritionDay> observeDay(int epochDay);
@@ -100,6 +125,16 @@ abstract class NutritionRepository {
     required int fatGrams,
     required int fiberGrams,
     int? foodCatalogId,
+  });
+
+  /// Ghi nhiều món trong **một** transaction duy nhất.
+  ///
+  /// Gọi [logFood] lặp trong vòng lặp sẽ tạo mỗi món một transaction, nên nếu
+  /// app bị kill giữa chừng thì `logged_foods` và tổng ngày trong
+  /// `daily_nutrition` sẽ lệch nhau vĩnh viễn.
+  Future<void> logFoods({
+    required int epochDay,
+    required List<FoodLogEntry> entries,
   });
   Future<void> logPhotoEstimate({
     required int epochDay,

@@ -378,6 +378,60 @@ class DriftNutritionRepository implements NutritionRepository {
   }
 
   @override
+  Future<void> logFoods({
+    required int epochDay,
+    required List<FoodLogEntry> entries,
+  }) async {
+    if (entries.isEmpty) return;
+
+    await database.transaction(() async {
+      var addedCalories = 0;
+      var addedProtein = 0;
+      var addedCarbs = 0;
+      var addedFat = 0;
+      var addedFiber = 0;
+
+      for (final entry in entries) {
+        await loggedFoodDao.insert(
+          LoggedFoodsCompanion(
+            epochDay: Value(epochDay),
+            name: Value(entry.name),
+            mealTime: Value(entry.mealTime),
+            grams: Value(entry.grams),
+            calories: Value(entry.calories),
+            proteinGrams: Value(entry.proteinGrams),
+            carbsGrams: Value(entry.carbsGrams),
+            fatGrams: Value(entry.fatGrams),
+            fiberGrams: Value(entry.fiberGrams),
+            foodCatalogId: Value(entry.foodCatalogId),
+            timestamp: Value(nowEpochMillis()),
+          ),
+        );
+        addedCalories += entry.calories;
+        addedProtein += entry.proteinGrams;
+        addedCarbs += entry.carbsGrams;
+        addedFat += entry.fatGrams;
+        addedFiber += entry.fiberGrams;
+      }
+
+      // Đọc tổng ngày *một lần sau khi* đã chèn hết, rồi cộng dồn một lượt —
+      // đọc-sửa-ghi từng món sẽ nhân số lần round-trip mà không thêm an toàn.
+      final current = await _entityNow(epochDay);
+      await personalizationDao.upsertDailyNutrition(
+        current.copyWith(
+          consumedCalories: current.consumedCalories + addedCalories,
+          consumedProteinGrams: current.consumedProteinGrams + addedProtein,
+          consumedCarbsGrams: current.consumedCarbsGrams + addedCarbs,
+          consumedFatGrams: current.consumedFatGrams + addedFat,
+          consumedFiberGrams: current.consumedFiberGrams + addedFiber,
+          lastEntrySource: Value(EntrySource.manual.name.toUpperCase()),
+          updatedAtEpochMillis: nowEpochMillis(),
+        ),
+      );
+    });
+  }
+
+  @override
   Future<void> logPhotoEstimate({
     required int epochDay,
     required PhotoNutritionLog log,

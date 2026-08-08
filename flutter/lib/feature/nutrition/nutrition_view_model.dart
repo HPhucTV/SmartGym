@@ -204,7 +204,7 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
 
     final proteinLimit = target?.proteinGrams ??
         () {
-          final g = activeGoal ?? (state is NutritionContent ? current.history.firstOrNull?.target != null ? null : null : null);
+          final g = goal;
           switch (g?.config.goal) {
             case FitnessGoal.muscleGain:
               return (fallbackLimit * 0.30 / 4).round();
@@ -217,7 +217,7 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
 
     final fatLimit = target?.fatGrams ??
         () {
-          final g = activeGoal ?? (state is NutritionContent ? current.history.firstOrNull?.target != null ? null : null : null);
+          final g = goal;
           switch (g?.config.goal) {
             case FitnessGoal.muscleGain:
               return (fallbackLimit * 0.25 / 9).round();
@@ -230,7 +230,7 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
 
     final carbsLimit = target?.carbsGrams ??
         () {
-          final g = activeGoal ?? (state is NutritionContent ? current.history.firstOrNull?.target != null ? null : null : null);
+          final g = goal;
           switch (g?.config.goal) {
             case FitnessGoal.muscleGain:
               return (fallbackLimit * 0.45 / 4).round();
@@ -798,27 +798,24 @@ class NutritionNotifier extends Notifier<NutritionUiState> {
 
     try {
       final today = currentLocalEpochDay();
-      for (final item in cart) {
+      final entries = cart.map((item) {
         final factor = item.grams / item.food.gramsPerServing;
-        final calories = (item.food.caloriesPerServing * factor).round();
-        final protein = (item.food.proteinPerServing * factor).round();
-        final carbs = (item.food.carbsPerServing * factor).round();
-        final fat = (item.food.fatPerServing * factor).round();
-        final fiber = (item.food.fiberPerServing * factor).round();
-
-        await ref.read(nutritionRepositoryProvider).logFood(
-          epochDay: today,
+        return FoodLogEntry(
           name: item.food.name,
           mealTime: item.mealTime,
           grams: item.grams,
-          calories: calories,
-          proteinGrams: protein,
-          carbsGrams: carbs,
-          fatGrams: fat,
-          fiberGrams: fiber,
+          calories: (item.food.caloriesPerServing * factor).round(),
+          proteinGrams: (item.food.proteinPerServing * factor).round(),
+          carbsGrams: (item.food.carbsPerServing * factor).round(),
+          fatGrams: (item.food.fatPerServing * factor).round(),
+          fiberGrams: (item.food.fiberPerServing * factor).round(),
           foodCatalogId: item.food.id > 0 ? item.food.id : null,
         );
-      }
+      }).toList();
+
+      await ref
+          .read(nutritionRepositoryProvider)
+          .logFoods(epochDay: today, entries: entries);
       _updateWith(cart: const []);
     } catch (_) {}
   }

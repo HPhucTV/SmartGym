@@ -6,11 +6,15 @@ class AchievementChecker {
   final int Function() todayEpochDay;
   final int Function() currentHour;
 
+  /// [todayEpochDay] bắt buộc phải truyền vào: trước đây nó có giá trị mặc định
+  /// tính bằng `floor()` trên thời điểm UTC thô, lệch với `currentLocalEpochDay`
+  /// suốt 7 tiếng mỗi ngày ở UTC+7 và khiến badge `nightOwl` không bao giờ mở
+  /// được sau 17:00 giờ địa phương. Giữ nó bắt buộc để chỉ còn một định nghĩa
+  /// "hôm nay" trong toàn app.
   AchievementChecker({
-    int Function()? todayEpochDay,
+    required this.todayEpochDay,
     int Function()? currentHour,
-  })  : todayEpochDay = todayEpochDay ?? (() => (DateTime.now().millisecondsSinceEpoch / (24 * 60 * 60 * 1000)).floor()),
-        currentHour = currentHour ?? (() => DateTime.now().hour);
+  }) : currentHour = currentHour ?? (() => DateTime.now().hour);
 
   /// Đánh giá xem có thành tựu mới nào được mở khóa hay không.
   /// Trả về danh sách các [AchievementType] mới được mở khóa so với danh sách [existing].

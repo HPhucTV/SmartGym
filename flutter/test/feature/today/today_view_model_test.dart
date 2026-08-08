@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:gym_app/core/model/achievement_models.dart';
 import 'package:gym_app/core/model/goal_models.dart';
 import 'package:gym_app/core/model/workout_models.dart';
 import 'package:gym_app/core/model/catalog_models.dart';
@@ -85,6 +86,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(WorkoutDifficulty.easy);
+    registerFallbackValue(<AchievementType>{});
   });
 
   setUp(() {
@@ -119,6 +121,10 @@ void main() {
         .thenAnswer((_) => Stream.value(null));
     when(() => mockWorkoutRepo.observeCompletedWorkouts())
         .thenAnswer((_) => Stream.value([]));
+    when(() => mockWorkoutRepo.unlockedAchievements())
+        .thenAnswer((_) => Future.value(<AchievementType>{}));
+    when(() => mockWorkoutRepo.recordUnlockedAchievements(any(), any()))
+        .thenAnswer((_) => Future.value());
 
     when(() => mockSettingsRepo.settings)
         .thenAnswer((_) => Stream.value(const Settings()));

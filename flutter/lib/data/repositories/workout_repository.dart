@@ -1,3 +1,4 @@
+import '../../../core/model/achievement_models.dart';
 import '../../../core/model/goal_models.dart';
 import '../../../core/model/workout_models.dart';
 import '../../../core/model/catalog_models.dart';
@@ -49,4 +50,11 @@ abstract class WorkoutRepository {
   Future<ScheduleChangeResult> applyScheduleChange(
       ScheduleChangePreview preview);
   Future<void> archiveActiveGoal();
+
+  /// Các badge đã mở khoá và được lưu lại từ trước.
+  Future<Set<AchievementType>> unlockedAchievements();
+
+  /// Lưu các badge vừa mở khoá. Ghi trùng là vô hại (insertOrIgnore).
+  Future<void> recordUnlockedAchievements(
+      Set<AchievementType> types, int unlockedAtEpochMillis);
 }

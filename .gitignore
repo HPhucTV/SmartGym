@@ -106,7 +106,6 @@ pnpm-debug.log*
 *.sqlite3
 /Calorie Tracker.xlsx
 /thuc_pham_mau.xlsx
-/flutter/assets/catalog/thuc_pham_mau.xlsx
 
 # Keep reviewed configuration templates in version control
 !server/.env.example

@@ -565,7 +565,13 @@ class TodayNotifier extends Notifier<TodayUiState> {
           final targetPerWeek =
               activeGoalForAchievements?.config.sessionsPerWeek ?? 0;
 
-          final checker = AchievementChecker();
+          // Badge đã mở khoá trước đây phải được loại ra, nếu không mọi badge
+          // vẫn còn thoả điều kiện sẽ bị báo là "mới" sau *mỗi* buổi tập.
+          final existingAchievements = await repo.unlockedAchievements();
+          if (!ref.mounted) return;
+
+          final checker =
+              AchievementChecker(todayEpochDay: currentLocalEpochDay);
           final newlyUnlockedBadges = activeGoalForAchievements == null
               ? <AchievementType>[]
               : checker.checkNewUnlocks(
@@ -573,8 +579,17 @@ class TodayNotifier extends Notifier<TodayUiState> {
                   activeGoalId: activeGoalForAchievements.id,
                   totalProgramSessions: totalSessions,
                   targetPerWeek: targetPerWeek,
-                  existing: {},
+                  existing: existingAchievements,
                 );
+
+          // Lưu lại ngay để lần hoàn thành sau không báo trùng.
+          if (newlyUnlockedBadges.isNotEmpty) {
+            await repo.recordUnlockedAchievements(
+              newlyUnlockedBadges.toSet(),
+              DateTime.now().millisecondsSinceEpoch,
+            );
+            if (!ref.mounted) return;
+          }
 
           ref.read(celebrationProvider.notifier).state = CelebrationState(
             showConfetti: true,

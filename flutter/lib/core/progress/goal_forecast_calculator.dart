@@ -98,8 +98,10 @@ class GoalForecastCalculator {
       return GoalForecastInsufficientData();
     }
 
-    final double weeklyRate =
-        min(completedSessions.toDouble() / elapsedWeeks, sessionsPerWeek.toDouble());
+    // Dùng đúng tốc độ *đo được*, không kẹp xuống tốc độ kế hoạch: kẹp lại sẽ
+    // khiến người tập 5 buổi/tuần trên kế hoạch 3 buổi/tuần bị dự báo là 3, nên
+    // không bao giờ báo được là đang vượt tiến độ.
+    final double weeklyRate = completedSessions.toDouble() / elapsedWeeks;
     if (weeklyRate <= 0.0) return GoalForecastInsufficientData();
     
     final remaining = totalSessions - completedSessions;

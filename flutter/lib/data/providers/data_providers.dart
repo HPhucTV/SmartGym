@@ -50,15 +50,36 @@ final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
 
 int? debugMockEpochDay;
 
-// Helper để lấy ngày hiện tại (local timezone epoch day)
+/// Số ngày kể từ epoch cho ngày *dương lịch địa phương* hiện tại.
+///
+/// Phải dựng bằng [DateTime.utc]: `DateTime(y, m, d)` là nửa đêm giờ địa
+/// phương, nên `millisecondsSinceEpoch` của nó là một thời điểm UTC lệch đi
+/// theo offset múi giờ — ở UTC+7 đó là 17:00 UTC của ngày *hôm trước*, và chia
+/// nguyên sẽ làm tròn xuống thành epoch day sai. Mọi nơi đọc lại giá trị này
+/// đều dùng `isUtc: true`, nên hai đầu phải cùng quy ước UTC để ngày và
+/// **thứ trong tuần** được bảo toàn.
 int currentLocalEpochDay() {
   if (debugMockEpochDay != null) {
     return debugMockEpochDay!;
   }
   final now = DateTime.now();
-  final localDate = DateTime(now.year, now.month, now.day);
-  return localDate.millisecondsSinceEpoch ~/ (24 * 60 * 60 * 1000);
+  return epochDayFromLocalDate(now);
 }
+
+/// Chuyển một [DateTime] địa phương thành epoch day, giữ đúng ngày dương lịch.
+int epochDayFromLocalDate(DateTime local) =>
+    DateTime.utc(local.year, local.month, local.day).millisecondsSinceEpoch ~/
+        Duration.millisecondsPerDay;
+
+/// Đọc ngược một epoch day về [DateTime] UTC lúc nửa đêm.
+///
+/// Dùng hàm này thay cho `DateTime.fromMillisecondsSinceEpoch(...)` viết tay để
+/// không quên `isUtc: true` — thiếu cờ đó là nguồn gốc lệch ngày khi render.
+DateTime dateFromEpochDay(int epochDay) =>
+    DateTime.fromMillisecondsSinceEpoch(
+      epochDay * Duration.millisecondsPerDay,
+      isUtc: true,
+    );
 
 // Workout Repository
 final workoutRepositoryProvider = Provider<WorkoutRepository>((ref) {

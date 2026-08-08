@@ -141,11 +141,23 @@ window.ExerciseAnimations = {
                 joints.shoulderR = [0.2, 1.42 - squatDepth * 0.95, -0.18 * s];
                 
                 if (exerciseId === "bodyweight_squat") {
-                    // Arms extend forward
-                    joints.elbowL = [-0.2, 1.4 - squatDepth * 0.5, 0.3 * s];
-                    joints.elbowR = [0.2, 1.4 - squatDepth * 0.5, 0.3 * s];
-                    joints.wristL = [-0.2, 1.4 - squatDepth * 0.5, 0.55 * s];
-                    joints.wristR = [0.2, 1.4 - squatDepth * 0.5, 0.55 * s];
+                    // Tay xoay tu buong thong (dung) sang duoi thang truoc (ngoi sau)
+                    // de giu thang bang. Truoc day elbow/wrist deu dat z = 0.3*s / 0.55*s
+                    // tai cung mot do cao, nen o s=0 ba khop vai/khuyu/co tay trung
+                    // nhau va canh tay bien mat khi render.
+                    const armAngle = s * Math.PI / 2;   // 0 = thong xuong, PI/2 = ngang truoc
+                    const upperArm = 0.27;
+                    const foreArm = 0.27;
+                    const shY = 1.42 - squatDepth * 0.95;
+                    const shZ = -0.18 * s;
+                    const dirY = -Math.cos(armAngle);
+                    const dirZ = Math.sin(armAngle);
+                    const elY = shY + upperArm * dirY;
+                    const elZ = shZ + upperArm * dirZ;
+                    joints.elbowL = [-0.2, elY, elZ];
+                    joints.elbowR = [0.2, elY, elZ];
+                    joints.wristL = [-0.2, elY + foreArm * dirY, elZ + foreArm * dirZ];
+                    joints.wristR = [0.2, elY + foreArm * dirY, elZ + foreArm * dirZ];
                 } else if (exerciseId === "goblet_squat") {
                     // Hold dumbbell at chest
                     joints.elbowL = [-0.15, 1.15 - squatDepth, 0.15 - 0.1 * s];
@@ -200,9 +212,24 @@ window.ExerciseAnimations = {
                 joints.hipL = [-0.15, 0.82 + 0.4 * s, 0.25 * s];
                 joints.hipR = [0.15, 0.82 + 0.4 * s, 0.25 * s];
                 
-                joints.kneeR = [0.15, 0.45 + 0.2 * s, 0.05 + 0.1 * s];
-                joints.kneeL = [-0.15, 0.55 + 0.35 * s, 0.35 * s];
-                
+                // Goi giai bang IK cho ca hai chan (truoc day cang tay/dui co
+                // gian khi buoc len buc).
+                for (const side of ['L', 'R']) {
+                    const hip = joints['hip' + side];
+                    const ank = joints['ankle' + side];
+                    const vy = ank[1] - hip[1], vz = ank[2] - hip[2];
+                    const raw = Math.hypot(vy, vz) || 1e-4;
+                    const uy = vy / raw, uz = vz / raw;
+                    const dist = Math.min(raw, 0.75 * 0.995);
+                    const a = (dist * dist + 0.37 * 0.37 - 0.38 * 0.38) / (2 * dist);
+                    const h = Math.sqrt(Math.max(0, 0.37 * 0.37 - a * a));
+                    joints['knee' + side] = [
+                        side === 'L' ? -0.15 : 0.15,
+                        hip[1] + uy * a + uz * h,
+                        hip[2] + uz * a - uy * h
+                    ];
+                }
+
                 joints.neck = [0, 1.5 + 0.4 * s, 0.25 * s];
                 joints.head = [0, 1.65 + 0.4 * s, 0.25 * s];
                 joints.shoulderL = [-0.2, 1.42 + 0.4 * s, 0.25 * s];
@@ -211,6 +238,24 @@ window.ExerciseAnimations = {
                 // Arms pump
                 joints.wristL = [-0.25, 0.88 + 0.4 * s, 0.25 * s - 0.1 + 0.2 * s];
                 joints.wristR = [0.25, 0.88 + 0.4 * s, 0.25 * s + 0.1 - 0.2 * s];
+                // Khuyu noi tiep giua vai va co tay: truoc day giu mac dinh nen
+                // canh tay tren co gian 0.18 -> 0.37 khi than nguoi nang len.
+                for (const side of ['L', 'R']) {
+                    const sh = joints['shoulder' + side];
+                    const w = joints['wrist' + side];
+                    const vy = w[1] - sh[1], vz = w[2] - sh[2];
+                    const raw = Math.hypot(vy, vz) || 1e-4;
+                    const uy = vy / raw, uz = vz / raw;
+                    const dist = Math.min(raw, 0.53 * 0.995);
+                    const a = (dist * dist + 0.27 * 0.27 - 0.26 * 0.26) / (2 * dist);
+                    const h = Math.sqrt(Math.max(0, 0.27 * 0.27 - a * a));
+                    const sgn = side === 'L' ? -1 : 1;
+                    joints['elbow' + side] = [
+                        (side === 'L' ? -0.22 : 0.22) + 0.04 * sgn,
+                        sh[1] + uy * a - uz * h,
+                        sh[2] + uz * a + uy * h
+                    ];
+                }
             } else {
                 // Lunge variants keep their own stance instead of sharing a squat pose.
                 const isSplit = exerciseId === "split_squat";
@@ -226,7 +271,18 @@ window.ExerciseAnimations = {
                 
                 // Knees bend
                 joints.kneeL = [-0.15, 0.45 - 0.2 * s, 0.28 + travel];
-                joints.kneeR = [0.15, 0.45 - 0.38 * s, rearZ + 0.18 + travel];
+                // Goi sau giai bang IK: truoc day dat toa do rieng nen dui phai
+                // co gian 0.43 -> 0.53 khi chan sau duoi ra.
+                {
+                    const hip = joints.hipR, ank = joints.ankleR;
+                    const vy = ank[1] - hip[1], vz = ank[2] - hip[2];
+                    const raw = Math.hypot(vy, vz) || 1e-4;
+                    const uy = vy / raw, uz = vz / raw;
+                    let dist = Math.min(raw, 0.75 * 0.995);
+                    const a = (dist * dist + 0.37 * 0.37 - 0.38 * 0.38) / (2 * dist);
+                    const h = Math.sqrt(Math.max(0, 0.37 * 0.37 - a * a));
+                    joints.kneeR = [0.15, hip[1] + uy * a + uz * h, hip[2] + uz * a - uy * h];
+                }
                 
                 joints.neck = [0, 1.5 - 0.42 * s, travel - 0.05 * s];
                 joints.head = [0, 1.65 - 0.42 * s, travel - 0.05 * s];
@@ -522,10 +578,17 @@ window.ExerciseAnimations = {
             // Hands fixed
             joints.wristL = [-0.3, handsY, pivotZ + 0.72];
             joints.wristR = [0.3, handsY, pivotZ + 0.72];
-            
-            // Elbows flare out / back
-            joints.elbowL = [-0.44 + 0.15 * s, shY + 0.1, pivotZ + 0.6];
-            joints.elbowR = [0.44 - 0.15 * s, shY + 0.1, pivotZ + 0.6];
+
+            // Khuyu nam GIUA vai va ban tay, banh ra ngoai va ha thap dan khi
+            // ha nguoi. Truoc day dat tai shY + 0.1 (cao hon ca vai) trong khi
+            // ban tay chong san o y = 0.05, nen cang tay dai 0.77m (chuan 0.24)
+            // va khuyu chia nguoc len tren.
+            const puMix = 0.5;
+            const puFlare = 0.16 - 0.04 * s;
+            const puElbowY = shY + (handsY - shY) * puMix;
+            const puElbowZ = shZ + ((pivotZ + 0.72) - shZ) * puMix - 0.1 * (1 - s);
+            joints.elbowL = [-0.3 - puFlare, puElbowY, puElbowZ];
+            joints.elbowR = [0.3 + puFlare, puElbowY, puElbowZ];
         }
         else if (CHEST.has(exerciseId)) {
             // --- BENCH PRESS / FLY PATTERN ---
@@ -797,10 +860,27 @@ window.ExerciseAnimations = {
                 
                 // Bar pulls down from 1.9m to 1.3m
                 const barY = 1.95 - 0.65 * s;
-                joints.wristL = [-0.4, barY, 0.05 * s];
-                joints.wristR = [0.4, barY, 0.05 * s];
-                joints.elbowL = [-0.42, barY + 0.25 - 0.35 * s, -0.05 * s];
-                joints.elbowR = [0.42, barY + 0.25 - 0.35 * s, -0.05 * s];
+                // Tay nam rong hon vai mot chut (0.30 so voi vai 0.22): rong hon
+                // nua thi khoang cach vai->co tay vuot tam voi cua canh tay
+                // (0.28 + 0.24) va xuong buoc phai gian ra de noi duoc.
+                const lpGrip = 0.30;
+                joints.wristL = [-lpGrip, barY, 0.05 * s];
+                joints.wristR = [lpGrip, barY, 0.05 * s];
+                // Khuyu nam GIUA vai va co tay, hoi banh ra ngoai. Truoc day dat
+                // tai barY + 0.25 tuc CAO HON ca thanh don, khien canh tay tren
+                // dai toi 1.00m (chuan 0.28) va khuyu gap nguoc len tren.
+                const lpShY = 1.22;
+                const lpElbowBulge = 0.10 + 0.05 * s;
+                joints.elbowL = [
+                    -lpGrip - lpElbowBulge,
+                    lpShY + (barY - lpShY) * 0.5,
+                    -0.04 * s
+                ];
+                joints.elbowR = [
+                    lpGrip + lpElbowBulge,
+                    lpShY + (barY - lpShY) * 0.5,
+                    -0.04 * s
+                ];
                 
                 joints.props.push({
                     type: 'barbell',
@@ -830,8 +910,23 @@ window.ExerciseAnimations = {
                 const handleY = 0.7 - 0.1 * s;
                 joints.wristL = [-0.15, handleY, handleZ + slide];
                 joints.wristR = [0.15, handleY, handleZ + slide];
-                joints.elbowL = [-0.28, handleY + 0.15 * s, handleZ - 0.1 * s + slide];
-                joints.elbowR = [0.28, handleY + 0.15 * s, handleZ - 0.1 * s + slide];
+                // Khuyu noi tiep giua vai va tay nam, banh nhe ra ngoai khi keo
+                // ve. Truoc day dat toa do doc lap nen canh tay tren dai 0.83m
+                // (chuan 0.28) luc tay con vuon xa.
+                const rmShY = 0.92;
+                const rmShZ = -0.35 + slide - 0.1 * s;
+                const rmMix = 0.5;
+                const rmBulge = 0.10 + 0.10 * s;
+                joints.elbowL = [
+                    -0.15 - rmBulge,
+                    rmShY + (handleY - rmShY) * rmMix,
+                    rmShZ + ((handleZ + slide) - rmShZ) * rmMix
+                ];
+                joints.elbowR = [
+                    0.15 + rmBulge,
+                    rmShY + (handleY - rmShY) * rmMix,
+                    rmShZ + ((handleZ + slide) - rmShZ) * rmMix
+                ];
             } else if (exerciseId === "barbell_bent_over_row" || exerciseId === "one_arm_dumbbell_row" || exerciseId === "inverted_row" || exerciseId === "seated_cable_row") {
                 // Standing / Seated Rows
                 if (exerciseId === "seated_cable_row") {
@@ -851,8 +946,23 @@ window.ExerciseAnimations = {
                     const handleZ = 0.5 - 0.55 * s;
                     joints.wristL = [-0.12, 0.75, handleZ];
                     joints.wristR = [0.12, 0.75, handleZ];
-                    joints.elbowL = [-0.28, 0.7, handleZ - 0.15 * s];
-                    joints.elbowR = [0.28, 0.7, handleZ - 0.15 * s];
+                    // Khuyu noi tiep giua vai va tay nam. Truoc day co dinh tai
+                    // z = handleZ - 0.15*s trong khi vai o z = -0.1 - 0.1*s, nen
+                    // luc tay vuon xa (handleZ = 0.5) canh tay tren dai 0.64m.
+                    const scrShY = 0.92;
+                    const scrShZ = -0.1 - 0.1 * s;
+                    const scrMix = 0.5;
+                    const scrBulge = 0.12 + 0.08 * s;
+                    joints.elbowL = [
+                        -0.12 - scrBulge,
+                        scrShY + (0.75 - scrShY) * scrMix,
+                        scrShZ + (handleZ - scrShZ) * scrMix
+                    ];
+                    joints.elbowR = [
+                        0.12 + scrBulge,
+                        scrShY + (0.75 - scrShY) * scrMix,
+                        scrShZ + (handleZ - scrShZ) * scrMix
+                    ];
                 } else if (exerciseId === "inverted_row") {
                     // Lying suspended
                     joints.ankleL = [-0.15, 0.05, 0.7];
@@ -1129,11 +1239,14 @@ window.ExerciseAnimations = {
             } else if (exerciseId === "bird_dog") {
                 // On all fours (tabletop)
                 // Left knee, right wrist remain support
-                joints.kneeL = [-0.15, 0.05, -0.2];
-                joints.ankleL = [-0.15, 0.05, -0.45];
+                // Tu the quy: dui tu hong xuong goi (0.37), cang chan dat tren
+                // san huong ve sau (0.386). Truoc day dui dai 0.50 con cang chan
+                // chi 0.25 - sai ty le giai phau.
+                joints.kneeL = [-0.15, 0.18, -0.2];
+                joints.ankleL = [-0.15, 0.05, -0.56];
                 joints.wristR = [0.15, 0.05, 0.35];
                 joints.elbowR = [0.2, 0.22, 0.28];
-                
+
                 // Hip / Shoulder locations
                 joints.hipL = [-0.15, 0.55, -0.2];
                 joints.hipR = [0.15, 0.55, -0.2];
@@ -1145,12 +1258,42 @@ window.ExerciseAnimations = {
                 // Left arm / Right leg extend out
                 // At s=0 (start), they tuck in (R knee forward, L hand in)
                 // At s=1 (max), they extend parallel to ground (y=0.55/0.58)
-                const extY = 0.56 * s + 0.15 * (1 - s);
-                joints.elbowL = [-0.2, extY, 0.35 + 0.22 * s];
-                joints.wristL = [-0.2, extY, 0.35 + 0.55 * s - 0.15 * (1 - s)];
+                // Khuyu trai noi tiep tu vai theo do dai co dinh thay vi dat
+                // toa do roi rac (truoc day co gian 0.34 -> 0.43).
+                const bdUpperArm = 0.28;
+                const bdUpDirY = (0.56 * s + 0.15 * (1 - s)) - 0.58;
+                const bdUpDirZ = 0.22 * s + 0.02;
+                const bdUpNorm = Math.hypot(bdUpDirY, bdUpDirZ) || 1;
+                joints.elbowL = [
+                    -0.2,
+                    0.58 + bdUpperArm * (bdUpDirY / bdUpNorm),
+                    0.35 + bdUpperArm * (bdUpDirZ / bdUpNorm)
+                ];
+                // Canh tay duoi giu do dai that. Truoc day co tay dat tai
+                // z = 0.35 + 0.55*s - 0.15*(1-s): o s~0.3 no gan trung khuyu
+                // (0.040m) nen cang tay bien mat giua chu ky.
+                const bdForeArm = 0.26;
+                const bdDirY = -0.35 * (1 - s) + 0.02 * s;
+                const bdDirZ = 0.55 + 0.45 * s;
+                const bdNorm = Math.hypot(bdDirY, bdDirZ) || 1;
+                joints.wristL = [
+                    -0.2,
+                    joints.elbowL[1] + bdForeArm * (bdDirY / bdNorm),
+                    joints.elbowL[2] + bdForeArm * (bdDirZ / bdNorm)
+                ];
                 
                 joints.kneeR = [0.15, 0.55 * s + 0.18 * (1 - s), -0.2 - 0.2 * s];
-                joints.ankleR = [0.15, 0.55 * s + 0.05 * (1 - s), -0.2 - 0.55 * s];
+                // Cang chan phai giu do dai that: truoc day goi va co chan gan
+                // trung nhau (0.122) nen doan nay bien mat khi chan duoi ra sau.
+                const bdShin = 0.386;
+                const bdShDirY = -0.55 * (1 - s) - 0.02 * s;
+                const bdShDirZ = -0.45 * (1 - s) - 1.0 * s;
+                const bdShNorm = Math.hypot(bdShDirY, bdShDirZ) || 1;
+                joints.ankleR = [
+                    0.15,
+                    Math.max(0.02, joints.kneeR[1] + bdShin * (bdShDirY / bdShNorm)),
+                    joints.kneeR[2] + bdShin * (bdShDirZ / bdShNorm)
+                ];
             } else {
                 // Dead Bug - Lying on back, alternate limbs extend
                 // Head/Shoulders flat
@@ -1177,7 +1320,18 @@ window.ExerciseAnimations = {
                 const legY = 0.38 * (1 - s) + 0.1 * s;
                 const legZ = 0.05 * (1 - s) + 0.45 * s;
                 joints.kneeR = [0.15, 0.38 * (1 - s) + 0.12 * s, 0.05 * (1 - s) + 0.35 * s];
-                joints.ankleR = [0.15, legY, legZ];
+                // Cang chan phai giu do dai that: truoc day o s=1 goi va co chan
+                // deu roi ve z ~0.40/0.45 cung do cao nen cang chan sup ve 0 va
+                // bien mat. Dat co chan noi tiep tu goi theo huong duoi thang.
+                const shinLen = 0.386;
+                const shinDirY = -0.32 * (1 - s) - 0.02 * s;
+                const shinDirZ = 0.62 * (1 - s) + 1.0 * s;
+                const shinNorm = Math.hypot(shinDirY, shinDirZ) || 1;
+                joints.ankleR = [
+                    0.15,
+                    joints.kneeR[1] + shinLen * (shinDirY / shinNorm),
+                    joints.kneeR[2] + shinLen * (shinDirZ / shinNorm)
+                ];
             }
         }
         else if (KNEE_TUCK.has(exerciseId)) {
@@ -1194,7 +1348,18 @@ window.ExerciseAnimations = {
                 });
                 joints.wristL = [-0.35, 1.95, 0];
                 joints.wristR = [0.35, 1.95, 0];
-                
+
+                // Than nguoi TREO duoi xa: truoc day chi dat co tay len xa
+                // (y=1.95) ma giu nguyen bo xuong dung mac dinh (vai y=1.42,
+                // khuyu y=1.15), nen canh tay duoi bi keo dai 0.81m.
+                // Vai treo cach xa mot doan bang chieu dai canh tay duoi + tren.
+                joints.shoulderL = [-0.25, 1.42, 0];
+                joints.shoulderR = [0.25, 1.42, 0];
+                joints.neck = [0, 1.5, 0];
+                joints.head = [0, 1.63, 0];
+                joints.elbowL = [-0.31, 1.69, 0];
+                joints.elbowR = [0.31, 1.69, 0];
+
                 // Legs hang, tuck knees up
                 joints.hipL = [-0.15, 0.85, 0];
                 joints.hipR = [0.15, 0.85, 0];
@@ -1267,15 +1432,44 @@ window.ExerciseAnimations = {
                 joints.kneeR = [spread * 0.6, 0.45 + bounce, 0];
                 joints.wristL = [-0.55 + 0.38 * phase, armY + bounce, 0];
                 joints.wristR = [0.55 - 0.38 * phase, armY + bounce, 0];
-                joints.elbowL = [-0.42 + 0.2 * phase, 1.12 + 0.48 * phase + bounce, 0];
-                joints.elbowR = [0.42 - 0.2 * phase, 1.12 + 0.48 * phase + bounce, 0];
+                // Khuyu noi tiep giua vai va co tay theo do dai co dinh. Truoc
+                // day dat toa do rieng nen ca hai doan tay co gian 11-14cm khi
+                // vung tay len xuong.
+                const jjUpper = 0.27;
+                const jjShY = 1.42 + bounce;
+                for (const side of ['L', 'R']) {
+                    const sx = side === 'L' ? -0.2 : 0.2;
+                    const w = joints['wrist' + side];
+                    const vx = w[0] - sx, vy = w[1] - jjShY;
+                    const raw = Math.hypot(vx, vy) || 1e-4;
+                    const maxR = (jjUpper + 0.26) * 0.995;
+                    let dist = raw;
+                    if (dist > maxR) {
+                        dist = maxR;
+                        joints['wrist' + side] = [sx + (vx / raw) * dist, jjShY + (vy / raw) * dist, 0];
+                    }
+                    const ux = vx / raw, uy = vy / raw;
+                    const a = (dist * dist + jjUpper * jjUpper - 0.26 * 0.26) / (2 * dist);
+                    const h = Math.sqrt(Math.max(0, jjUpper * jjUpper - a * a));
+                    const sgn = side === 'L' ? -1 : 1;
+                    joints['elbow' + side] = [
+                        sx + ux * a + uy * h * sgn,
+                        jjShY + uy * a - ux * h * sgn,
+                        0
+                    ];
+                }
             } else if (exerciseId === "low_impact_jumping_jack") {
                 const sideStep = 0.32 * Math.max(0, sinT);
                 joints.ankleL = [-0.15 - sideStep, 0.05, 0];
                 joints.kneeL = [-0.15 - sideStep * 0.55, 0.45, 0];
                 joints.wristL = [-0.2 - 0.35 * phase, 0.88 + 0.72 * phase, 0];
                 joints.elbowL = [-0.25 - 0.22 * phase, 1.15 + 0.35 * phase, 0];
-                joints.wristR = [0.2, 0.88 + 0.25 * (1 - phase), 0];
+                // Tay phai nang nhe nguoc pha voi tay trai. Truoc day chi dat
+                // wristR (len toi y=1.13) ma giu elbowR mac dinh o y=1.15, nen
+                // hai khop trung nhau (0.028m) va cang tay phai bien mat.
+                const rLift = 0.25 * (1 - phase);
+                joints.elbowR = [0.24, 1.15 + rLift * 0.4, 0];
+                joints.wristR = [0.22, joints.elbowR[1] - 0.26 + rLift * 0.5, 0];
             } else if (exerciseId === "jump_rope") {
                 const jumpHeight = 0.08 * Math.max(0, Math.sin(t * 2));
                 for (const jointName of ['ankleL', 'ankleR', 'kneeL', 'kneeR', 'hipL', 'hipR', 'shoulderL', 'shoulderR', 'neck', 'head']) {
@@ -1300,16 +1494,56 @@ window.ExerciseAnimations = {
                 joints.elbowR = [0.25, 1.12, 0.28];
                 joints.ankleL = [-0.15, 0.38 + pedalRadius * sinT, 0.2 + pedalRadius * cosT];
                 joints.ankleR = [0.15, 0.38 - pedalRadius * sinT, 0.2 - pedalRadius * cosT];
-                joints.kneeL = [-0.15, 0.58 + 0.18 * Math.max(0, sinT), 0.08 + 0.18 * cosT];
-                joints.kneeR = [0.15, 0.58 + 0.18 * Math.max(0, -sinT), 0.08 - 0.18 * cosT];
+                // Goi giai bang IK 2 xuong tu hong den co chan dang dap vong
+                // tron. Truoc day goi chay theo cong thuc rieng nen cang chan
+                // co gian 0.22 -> 0.40 (18cm) moi vong dap.
+                const bikeThigh = 0.37, bikeShin = 0.38;
+                for (const side of ['L', 'R']) {
+                    const hip = joints['hip' + side];
+                    const ank = joints['ankle' + side];
+                    const vy = ank[1] - hip[1], vz = ank[2] - hip[2];
+                    let dist = Math.hypot(vy, vz);
+                    const maxR = (bikeThigh + bikeShin) * 0.995;
+                    if (dist > maxR) dist = maxR;
+                    if (dist < 1e-4) dist = 1e-4;
+                    const uy = vy / Math.hypot(vy, vz), uz = vz / Math.hypot(vy, vz);
+                    const a = (dist * dist + bikeThigh * bikeThigh - bikeShin * bikeShin) / (2 * dist);
+                    const h = Math.sqrt(Math.max(0, bikeThigh * bikeThigh - a * a));
+                    // Phap tuyen huong ra truoc (dau goi gap ve phia truoc)
+                    joints['knee' + side] = [
+                        side === 'L' ? -0.15 : 0.15,
+                        hip[1] + uy * a + uz * h,
+                        hip[2] + uz * a - uy * h
+                    ];
+                }
                 joints.props.push({ type: 'line', start: [0, 0.38, 0.2], end: [0, 0.78, -0.2], color: '#6B7280', width: 5 });
                 joints.props.push({ type: 'line', start: [0, 0.38, 0.2], end: [0, 1.02, 0.5], color: '#6B7280', width: 4 });
             } else if (exerciseId === "elliptical") {
                 const stride = 0.38 * cosT;
                 joints.ankleL = [-0.17, 0.12 + 0.05 * sinT, stride];
                 joints.ankleR = [0.17, 0.12 - 0.05 * sinT, -stride];
-                joints.kneeL = [-0.17, 0.48 + 0.08 * Math.max(0, sinT), stride * 0.55];
-                joints.kneeR = [0.17, 0.48 + 0.08 * Math.max(0, -sinT), -stride * 0.55];
+                // Goi giai bang IK giong cac bai chay/dap xe (truoc day dui co
+                // gian 0.30 -> 0.40 theo buoc truot).
+                for (const side of ['L', 'R']) {
+                    const hip = joints['hip' + side];
+                    const ank = joints['ankle' + side];
+                    const vy = ank[1] - hip[1], vz = ank[2] - hip[2];
+                    const raw = Math.hypot(vy, vz) || 1e-4;
+                    const maxR = 0.75 * 0.995;
+                    const uy = vy / raw, uz = vz / raw;
+                    let dist = raw;
+                    if (dist > maxR) {
+                        dist = maxR;
+                        joints['ankle' + side] = [ank[0], hip[1] + uy * dist, hip[2] + uz * dist];
+                    }
+                    const a = (dist * dist + 0.37 * 0.37 - 0.38 * 0.38) / (2 * dist);
+                    const h = Math.sqrt(Math.max(0, 0.37 * 0.37 - a * a));
+                    joints['knee' + side] = [
+                        side === 'L' ? -0.17 : 0.17,
+                        hip[1] + uy * a + uz * h,
+                        hip[2] + uz * a - uy * h
+                    ];
+                }
                 joints.elbowL = [-0.23, 1.18, -0.25 * cosT];
                 joints.elbowR = [0.23, 1.18, 0.25 * cosT];
                 joints.wristL = [-0.3, 1.42, -0.42 * cosT];
@@ -1331,8 +1565,32 @@ window.ExerciseAnimations = {
                 const legZR = -legZL;
                 joints.ankleL = [-0.15, 0.05 + lift * Math.max(0, sinT), legZL];
                 joints.ankleR = [0.15, 0.05 + lift * Math.max(0, -sinT), legZR];
-                joints.kneeL = [-0.15, 0.44 + bodyBounce + lift * 0.55 * Math.max(0, Math.sin(t + 0.3)), legZL * 0.6 + 0.05];
-                joints.kneeR = [0.15, 0.44 + bodyBounce + lift * 0.55 * Math.max(0, Math.sin(t + Math.PI + 0.3)), legZR * 0.6 + 0.05];
+                // Goi giai bang IK 2 xuong thay vi cong thuc doc lap: truoc day
+                // dui va cang chan co gian toi 16cm khi nang goi cao (high_knees
+                // 0.17->0.33) vi goi va co chan chay theo hai pha khac nhau.
+                const gaitThigh = 0.37, gaitShin = 0.38;
+                for (const side of ['L', 'R']) {
+                    const hip = joints['hip' + side];
+                    const ank = joints['ankle' + side];
+                    const vy = ank[1] - hip[1], vz = ank[2] - hip[2];
+                    const raw = Math.hypot(vy, vz) || 1e-4;
+                    const maxR = (gaitThigh + gaitShin) * 0.995;
+                    const uy = vy / raw, uz = vz / raw;
+                    let dist = raw;
+                    if (dist > maxR) {
+                        // Keo co chan ve trong tam voi thay vi de xuong gian ra
+                        dist = maxR;
+                        joints['ankle' + side] = [ank[0], hip[1] + uy * dist, hip[2] + uz * dist];
+                    }
+                    const a = (dist * dist + gaitThigh * gaitThigh - gaitShin * gaitShin) / (2 * dist);
+                    const h = Math.sqrt(Math.max(0, gaitThigh * gaitThigh - a * a));
+                    // Phap tuyen huong ra truoc: dau goi luon gap ve phia truoc
+                    joints['knee' + side] = [
+                        side === 'L' ? -0.15 : 0.15,
+                        hip[1] + uy * a + uz * h,
+                        hip[2] + uz * a - uy * h
+                    ];
+                }
                 joints.neck = [0, 1.48 + bodyBounce, torsoTilt];
                 joints.head = [0, 1.63 + bodyBounce, torsoTilt + 0.03];
                 joints.shoulderL = [-0.2, 1.4 + bodyBounce, torsoTilt];

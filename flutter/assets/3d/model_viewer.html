@@ -632,13 +632,21 @@
                 const midX = (joints.hipL[0] + joints.hipR[0]) / 2;
                 const midY = 0.05;
                 const midZ = (joints.hipL[2] + joints.hipR[2]) / 2;
-                
+
                 const shadowProj = project3D([midX, midY, midZ]);
                 if (shadowProj) {
                     ctx.fillStyle = theme.shadow;
                     ctx.beginPath();
-                    const bodyHeight = joints.head[1];
-                    const r = shadowProj.scale * 0.22 * (1.6 / bodyHeight);
+                    // Bong bam theo be ngang co the, KHONG bam chieu cao dau.
+                    // Truoc day dung he so (1.6 / joints.head[1]): voi cac bai nam
+                    // (bench press head_y=0.53, glute_bridge/dead_bug head_y=0.08)
+                    // dau o sat san nen mau so rat nho, bong phinh to 3x-20x thanh
+                    // mot vet ellipse toi che ca hinh.
+                    const bodySpan = Math.hypot(
+                        joints.hipL[0] - joints.hipR[0],
+                        joints.hipL[2] - joints.hipR[2]
+                    );
+                    const r = shadowProj.scale * Math.max(bodySpan, 0.3) * 0.75;
                     ctx.ellipse(shadowProj.x, shadowProj.y, r * 1.5, r * 0.8, yaw, 0, Math.PI * 2);
                     ctx.fill();
                 }
